@@ -8,11 +8,13 @@ class N8nHostManagerClient
 {
     private $apiUrl;
     private $apiToken;
+    private $verifySsl;
 
-    public function __construct($apiUrl, $apiToken)
+    public function __construct($apiUrl, $apiToken, $verifySsl = true)
     {
         $this->apiUrl = rtrim($apiUrl, '/');
         $this->apiToken = $apiToken;
+        $this->verifySsl = $verifySsl;
     }
 
     private function request($method, $endpoint, $data = [])
@@ -30,6 +32,11 @@ class N8nHostManagerClient
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        if (!$this->verifySsl) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        }
 
         if (!empty($data)) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
