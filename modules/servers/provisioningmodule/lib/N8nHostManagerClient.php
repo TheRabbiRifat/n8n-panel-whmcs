@@ -1,0 +1,154 @@
+<?php
+
+namespace WHMCS\Module\Server\ProvisioningModule;
+
+use Exception;
+
+class N8nHostManagerClient
+{
+    private $apiUrl;
+    private $apiToken;
+
+    public function __construct($apiUrl, $apiToken)
+    {
+        $this->apiUrl = rtrim($apiUrl, '/');
+        $this->apiToken = $apiToken;
+    }
+
+    private function request($method, $endpoint, $data = [])
+    {
+        $url = $this->apiUrl . $endpoint;
+        $ch = curl_init();
+
+        $headers = [
+            'Authorization: Bearer ' . $this->apiToken,
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ];
+
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        if (!empty($data)) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        }
+
+        $response = curl_exec($ch);
+        $error = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        curl_close($ch);
+
+        if ($error) {
+            throw new Exception("cURL Error: " . $error);
+        }
+
+        $decodedResponse = json_decode($response, true);
+
+        if ($httpCode >= 400) {
+            $errorMessage = "Request failed with status $httpCode";
+            if (isset($decodedResponse['message'])) {
+                $errorMessage .= ": " . $decodedResponse['message'];
+            } elseif (isset($decodedResponse['error'])) {
+                 $errorMessage .= ": " . $decodedResponse['error'];
+            }
+            throw new Exception($errorMessage);
+        }
+
+        return $decodedResponse;
+    }
+
+    public function testConnection()
+    {
+        return $this->request('GET', '/connection/test');
+    }
+
+    public function getSystemStats()
+    {
+        return $this->request('GET', '/system/stats');
+    }
+
+    public function createInstance($email, $packageId, $name, $version = 'latest')
+    {
+        return $this->request('POST', '/instances/create', [
+            'email' => $email,
+            'package_id' => $packageId,
+            'name' => $name,
+            'version' => $version
+        ]);
+    }
+
+    public function getInstanceStats($id)
+    {
+        return $this->request('GET', '/instances/' . $id . '/stats');
+    }
+
+    public function startInstance($id)
+    {
+        return $this->request('POST', '/instances/' . $id . '/start');
+    }
+
+    public function stopInstance($id)
+    {
+        return $this->request('POST', '/instances/' . $id . '/stop');
+    }
+
+    public function suspendInstance($id)
+    {
+        return $this->request('POST', '/instances/' . $id . '/suspend');
+    }
+
+    public function unsuspendInstance($id)
+    {
+        return $this->request('POST', '/instances/' . $id . '/unsuspend');
+    }
+
+    public function terminateInstance($id)
+    {
+        return $this->request('POST', '/instances/' . $id . '/terminate');
+    }
+
+    public function upgradeInstance($id, $packageId)
+    {
+        return $this->request('POST', '/instances/' . $id . '/upgrade', [
+            'package_id' => $packageId
+        ]);
+    }
+
+    public function getPackages()
+    {
+        return $this->request('GET', '/packages');
+    }
+
+    public function getPackage($id)
+    {
+        return $this->request('GET', '/packages/' . $id);
+    }
+
+    public function createUser($name, $email, $password)
+    {
+        return $this->request('POST', '/users', [
+            'name' => $name,
+            'email' => $email,
+            'password' => $password
+        ]);
+    }
+
+    public function createReseller($name, $email, $password)
+    {
+        return $this->request('POST', '/resellers', [
+            'name' => $name,
+            'email' => $email,
+            'password' => $password
+        ]);
+    }
+
+    public function getUserSso($email)
+    {
+        return $this->request('POST', '/users/sso', [
+            'email' => $email
+        ]);
+    }
+}
