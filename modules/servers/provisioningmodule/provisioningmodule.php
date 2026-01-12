@@ -13,7 +13,7 @@ use WHMCS\Module\Server\ProvisioningModule\N8nHostManagerClient;
 function provisioningmodule_MetaData()
 {
     return array(
-        'DisplayName' => 'n8n Host Manager',
+        'DisplayName' => 'n8n Panel',
         'APIVersion' => '1.1',
         'RequiresServer' => true,
         'ServiceSingleSignOnLabel' => 'Login to n8n Panel',
