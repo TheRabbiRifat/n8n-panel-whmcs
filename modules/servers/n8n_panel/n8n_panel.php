@@ -8,9 +8,9 @@ use WHMCS\Database\Capsule;
 
 require_once __DIR__ . '/lib/N8nHostManagerClient.php';
 
-use WHMCS\Module\Server\ProvisioningModule\N8nHostManagerClient;
+use WHMCS\Module\Server\N8nPanel\N8nHostManagerClient;
 
-function provisioningmodule_MetaData()
+function n8n_panel_MetaData()
 {
     return array(
         'DisplayName' => 'n8n Panel',
@@ -20,7 +20,7 @@ function provisioningmodule_MetaData()
     );
 }
 
-function provisioningmodule_ConfigOptions()
+function n8n_panel_ConfigOptions()
 {
     return array(
         'Package ID' => array(
@@ -31,7 +31,7 @@ function provisioningmodule_ConfigOptions()
     );
 }
 
-function provisioningmodule_getClient($params)
+function n8n_panel_getClient($params)
 {
     // serverhostname usually comes as "hostname" or "ip"
     // serverpassword is used for the API Token
@@ -57,10 +57,10 @@ function provisioningmodule_getClient($params)
     return new N8nHostManagerClient($baseUrl, $params['serverpassword']);
 }
 
-function provisioningmodule_TestConnection(array $params)
+function n8n_panel_TestConnection(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $result = $client->testConnection();
 
         if (isset($result['status']) && $result['status'] == 'success') {
@@ -76,10 +76,10 @@ function provisioningmodule_TestConnection(array $params)
     }
 }
 
-function provisioningmodule_CreateAccount(array $params)
+function n8n_panel_CreateAccount(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
 
         $email = $params['clientsdetails']['email'];
         $firstName = $params['clientsdetails']['firstname'];
@@ -131,10 +131,10 @@ function provisioningmodule_CreateAccount(array $params)
     }
 }
 
-function provisioningmodule_SuspendAccount(array $params)
+function n8n_panel_SuspendAccount(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
 
         if (empty($instanceId)) {
@@ -148,10 +148,10 @@ function provisioningmodule_SuspendAccount(array $params)
     }
 }
 
-function provisioningmodule_UnsuspendAccount(array $params)
+function n8n_panel_UnsuspendAccount(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
 
         if (empty($instanceId)) {
@@ -165,10 +165,10 @@ function provisioningmodule_UnsuspendAccount(array $params)
     }
 }
 
-function provisioningmodule_TerminateAccount(array $params)
+function n8n_panel_TerminateAccount(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
 
         if (empty($instanceId)) {
@@ -191,10 +191,10 @@ function provisioningmodule_TerminateAccount(array $params)
     }
 }
 
-function provisioningmodule_ChangePackage(array $params)
+function n8n_panel_ChangePackage(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
         $newPackageId = $params['configoption1'];
 
@@ -209,10 +209,10 @@ function provisioningmodule_ChangePackage(array $params)
     }
 }
 
-function provisioningmodule_ServiceSingleSignOn(array $params)
+function n8n_panel_ServiceSingleSignOn(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $email = $params['clientsdetails']['email'];
 
         $result = $client->getUserSso($email);
@@ -237,7 +237,7 @@ function provisioningmodule_ServiceSingleSignOn(array $params)
     }
 }
 
-function provisioningmodule_ClientAreaCustomButtonArray()
+function n8n_panel_ClientAreaCustomButtonArray()
 {
     return array(
         "Start Instance" => "startInstance",
@@ -245,7 +245,7 @@ function provisioningmodule_ClientAreaCustomButtonArray()
     );
 }
 
-function provisioningmodule_AdminCustomButtonArray()
+function n8n_panel_AdminCustomButtonArray()
 {
     return array(
         "Start Instance" => "startInstance",
@@ -253,10 +253,10 @@ function provisioningmodule_AdminCustomButtonArray()
     );
 }
 
-function provisioningmodule_startInstance(array $params)
+function n8n_panel_startInstance(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
 
         if (empty($instanceId)) {
@@ -270,10 +270,10 @@ function provisioningmodule_startInstance(array $params)
     }
 }
 
-function provisioningmodule_stopInstance(array $params)
+function n8n_panel_stopInstance(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
 
         if (empty($instanceId)) {
@@ -287,17 +287,17 @@ function provisioningmodule_stopInstance(array $params)
     }
 }
 
-function provisioningmodule_ClientArea(array $params)
+function n8n_panel_ClientArea(array $params)
 {
     try {
-        $client = provisioningmodule_getClient($params);
+        $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
 
         if (!empty($instanceId)) {
              $stats = $client->getInstanceStats($instanceId);
 
              return array(
-                'tabOverviewReplacementTemplate' => 'modules/servers/provisioningmodule/templates/overview.tpl',
+                'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/overview.tpl',
                 'templateVariables' => array(
                     'instanceStats' => $stats,
                 ),
@@ -307,7 +307,7 @@ function provisioningmodule_ClientArea(array $params)
     } catch (Exception $e) {
         // Log error but allow page to load
         logModuleCall(
-            'provisioningmodule',
+            'n8n_panel',
             __FUNCTION__,
             $params,
             $e->getMessage(),
