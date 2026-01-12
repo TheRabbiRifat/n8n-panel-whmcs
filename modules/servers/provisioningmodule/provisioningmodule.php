@@ -87,13 +87,12 @@ function provisioningmodule_CreateAccount(array $params)
         $password = $params['password'];
         $packageId = $params['configoption1']; // Corresponds to Package ID
 
-        // Instance Name: use domain or fallback
-        $instanceName = $params['domain'];
-        if (empty($instanceName)) {
-            $instanceName = 'n8n-' . $params['serviceid'];
+        // Generate Instance Name: 7 digit random (a-z, 1-9)
+        $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
+        $instanceName = '';
+        for ($i = 0; $i < 7; $i++) {
+            $instanceName .= $chars[mt_rand(0, strlen($chars) - 1)];
         }
-        // Sanitize name (alpha-dash)
-        $instanceName = preg_replace('/[^a-zA-Z0-9-]/', '-', $instanceName);
 
         // 1. Ensure user exists
         try {
@@ -298,7 +297,7 @@ function provisioningmodule_ClientArea(array $params)
              $stats = $client->getInstanceStats($instanceId);
 
              return array(
-                'tabOverviewReplacementTemplate' => 'templates/overview.tpl',
+                'tabOverviewReplacementTemplate' => 'modules/servers/provisioningmodule/templates/overview.tpl',
                 'templateVariables' => array(
                     'instanceStats' => $stats,
                 ),
