@@ -1,6 +1,6 @@
 <?php
 
-namespace WHMCS\Module\Server\ProvisioningModule;
+namespace WHMCS\Module\Server\N8nPanel;
 
 use Exception;
 
