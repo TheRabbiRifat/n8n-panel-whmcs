@@ -28,6 +28,15 @@ function n8n_panel_ConfigOptions()
             'Size' => '10',
             'Description' => 'The ID of the resource package in n8n Host Manager',
         ),
+        'API Port' => array(
+            'Type' => 'text',
+            'Size' => '5',
+            'Description' => 'Override default port (optional)',
+        ),
+        'Skip SSL Verification' => array(
+            'Type' => 'yesno',
+            'Description' => 'Tick to skip SSL verification (not recommended)',
+        ),
     );
 }
 
@@ -41,9 +50,27 @@ function n8n_panel_getClient($params)
         $hostname = $params['serverip'];
     }
 
+    // Check if custom port is set in Config Options (Index 2)
+    // Note: ConfigOptions order matters.
+    // 1: Package ID, 2: API Port, 3: Skip SSL Verification
+    $customPort = isset($params['configoption2']) ? trim($params['configoption2']) : '';
+    $skipSsl = isset($params['configoption3']) && $params['configoption3'] == 'on';
+
     // Ensure protocol is present
     if (!preg_match("~^https?://~i", $hostname)) {
         $hostname = "https://" . $hostname;
+    }
+
+    // If custom port is provided, insert it into the hostname if not already present
+    if (!empty($customPort)) {
+        $parts = parse_url($hostname);
+        if (!isset($parts['port'])) {
+             // Reconstruct URL with port
+             $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
+             $host = isset($parts['host']) ? $parts['host'] : '';
+             $path = isset($parts['path']) ? $parts['path'] : '';
+             $hostname = $scheme . $host . ':' . $customPort . $path;
+        }
     }
 
     // Append /api/integration if not present (based on API.md Base URL)
@@ -54,7 +81,7 @@ function n8n_panel_getClient($params)
 
     $baseUrl = rtrim($hostname, '/') . '/api/integration';
 
-    return new N8nHostManagerClient($baseUrl, $params['serverpassword']);
+    return new N8nHostManagerClient($baseUrl, $params['serverpassword'], !$skipSsl);
 }
 
 function n8n_panel_TestConnection(array $params)
