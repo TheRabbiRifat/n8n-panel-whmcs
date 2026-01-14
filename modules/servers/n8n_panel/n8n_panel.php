@@ -99,6 +99,20 @@ function n8n_panel_TestConnection(array $params)
         $result = $client->testConnection();
 
         if (isset($result['status']) && $result['status'] == 'success') {
+
+            // Auto-fill Server Username with Admin Email if available
+            if (isset($result['user']['email']) && !empty($params['serverid'])) {
+                try {
+                    Capsule::table('tblservers')
+                        ->where('id', $params['serverid'])
+                        ->update([
+                            'username' => $result['user']['email'],
+                        ]);
+                } catch (Exception $e) {
+                    // Ignore DB update errors during connection test
+                }
+            }
+
             return array('success' => true);
         } else {
             return array('success' => false, 'error' => 'Connection failed: ' . json_encode($result));
