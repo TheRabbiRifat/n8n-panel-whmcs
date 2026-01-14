@@ -22,27 +22,73 @@ function n8n_panel_MetaData()
 
 function n8n_panel_ConfigOptions()
 {
+    $packageOptions = [];
+    $description = 'Select a package from the n8n Host Manager';
+
+    try {
+        $server = Capsule::table('tblservers')
+            ->where('type', 'n8n_panel')
+            ->where('disabled', 0)
+            ->first();
+
+        if ($server) {
+            $hostname = $server->hostname;
+            if (empty($hostname)) {
+                $hostname = $server->ipaddress;
+            }
+            // Use decrypt function if available, or try common alternatives if needed.
+            // In standard WHMCS provisioning modules, decrypt() is available.
+            $password = decrypt($server->password);
+            $secure = ($server->secure == 'on');
+
+            if (!preg_match("~^https?://~i", $hostname)) {
+                $hostname = "https://" . $hostname;
+            }
+
+            $parts = parse_url($hostname);
+            if (!isset($parts['port'])) {
+                $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
+                $host = isset($parts['host']) ? $parts['host'] : '';
+                $path = isset($parts['path']) ? $parts['path'] : '';
+                $hostname = $scheme . $host . ':8448' . $path;
+            }
+
+            $baseUrl = rtrim($hostname, '/') . '/api/integration';
+
+            $client = new N8nHostManagerClient($baseUrl, $password, $secure);
+            $response = $client->getPackages();
+
+            if (isset($response['packages'])) {
+                foreach ($response['packages'] as $pkg) {
+                    $packageOptions[$pkg['id']] = $pkg['name'];
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // Fallback to text field if connection fails
+    }
+
+    if (!empty($packageOptions)) {
+        $packageField = array(
+            'Type' => 'dropdown',
+            'Options' => $packageOptions,
+            'Description' => $description,
+        );
+    } else {
+        $packageField = array(
+            'Type' => 'text',
+            'Size' => '10',
+            'Description' => 'Package ID (Could not fetch packages: check server config)',
+        );
+    }
+
     return array(
-        'Package ID' => array(
-            'Type' => 'text',
-            'Size' => '10',
-            'Description' => 'The ID of the resource package in n8n Host Manager',
-        ),
-        'API Port' => array(
-            'Type' => 'text',
-            'Size' => '5',
-            'Default' => '8448',
-            'Description' => 'Override default port (optional)',
-        ),
-        'Skip SSL Verification' => array(
-            'Type' => 'yesno',
-            'Description' => 'Tick to skip SSL verification (not recommended)',
-        ),
+        'Package ID' => $packageField,
         'n8n Version' => array(
-            'Type' => 'text',
-            'Size' => '10',
+            'Type' => 'dropdown',
+            'Options' => 'stable,latest,beta',
             'Default' => 'latest',
-            'Description' => 'Docker tag (e.g. latest, 1.0.0)',
+            'Description' => 'Docker tag',
         ),
     );
 }
@@ -57,39 +103,28 @@ function n8n_panel_getClient($params)
         $hostname = $params['serverip'];
     }
 
-    // Check if custom port is set in Config Options (Index 2)
-    // Note: ConfigOptions order matters.
-    // 1: Package ID, 2: API Port, 3: Skip SSL Verification, 4: n8n Version
-    $customPort = isset($params['configoption2']) ? trim($params['configoption2']) : '';
-    $skipSsl = isset($params['configoption3']) && $params['configoption3'] == 'on';
+    // SSL Verification based on Server 'Secure' checkbox
+    $verifySsl = (isset($params['serversecure']) && $params['serversecure'] == 'on');
 
     // Ensure protocol is present
     if (!preg_match("~^https?://~i", $hostname)) {
         $hostname = "https://" . $hostname;
     }
 
-    // Use custom port if provided, otherwise default to 8448
-    $portToUse = !empty($customPort) ? $customPort : '8448';
-
-    // Insert port into the hostname if not already present
+    // Check for port in hostname, default to 8448 if not present
     $parts = parse_url($hostname);
     if (!isset($parts['port'])) {
-         // Reconstruct URL with port
+         // Reconstruct URL with port 8448
          $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
          $host = isset($parts['host']) ? $parts['host'] : '';
          $path = isset($parts['path']) ? $parts['path'] : '';
-         $hostname = $scheme . $host . ':' . $portToUse . $path;
+         $hostname = $scheme . $host . ':8448' . $path;
     }
 
-    // Append /api/integration if not present (based on API.md Base URL)
-    // API.md says: https://your-panel-domain.com/api/integration
-    // If the user enters "panel-domain.com" as hostname, we should append /api/integration
-    // But the client class appends endpoint to baseUrl.
-    // So we should construct the base URL correctly.
-
+    // Append /api/integration if not present
     $baseUrl = rtrim($hostname, '/') . '/api/integration';
 
-    return new N8nHostManagerClient($baseUrl, $params['serverpassword'], !$skipSsl);
+    return new N8nHostManagerClient($baseUrl, $params['serverpassword'], $verifySsl);
 }
 
 function n8n_panel_TestConnection(array $params)
@@ -178,7 +213,7 @@ function n8n_panel_CreateAccount(array $params)
         $lastName = $params['clientsdetails']['lastname'];
         $password = $params['password'];
         $packageId = $params['configoption1']; // Corresponds to Package ID
-        $n8nVersion = isset($params['configoption4']) ? $params['configoption4'] : 'latest';
+        $n8nVersion = isset($params['configoption2']) ? $params['configoption2'] : 'latest';
 
         // Generate Instance Name: 7 digit random (a-z, 1-9)
         $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
