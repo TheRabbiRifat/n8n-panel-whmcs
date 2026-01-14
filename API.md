@@ -82,7 +82,7 @@ Provision a new n8n instance for an existing user.
 *   **Endpoint:** `POST /instances/create`
 *   **Body Parameters:**
     *   `email` (string, required): Existing user email.
-    *   `package` (string, required): Name of the resource package.
+    *   `package_id` (int, required): ID of the resource package.
     *   `name` (string, required): Unique instance name (alpha-dash).
     *   `version` (string, optional): n8n version tag (default: 'latest').
 *   **Response:**
@@ -131,7 +131,7 @@ Change the resource package for an instance. New limits are applied immediately.
 
 *   **Endpoint:** `POST /instances/{name}/upgrade`
 *   **Body Parameters:**
-    *   `package` (string, required): New package Name.
+    *   `package_id` (int, required): New package ID.
 *   **Response:**
     ```json
     {

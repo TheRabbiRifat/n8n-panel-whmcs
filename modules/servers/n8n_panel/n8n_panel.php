@@ -60,8 +60,8 @@ function n8n_panel_ConfigOptions()
 
             if (isset($response['packages'])) {
                 foreach ($response['packages'] as $pkg) {
-                    // Use Package Name as the key, since API now expects Name
-                    $packageOptions[$pkg['name']] = $pkg['name'];
+                    // Use Package ID as the key
+                    $packageOptions[$pkg['id']] = $pkg['name'];
                 }
             }
         }
@@ -78,8 +78,8 @@ function n8n_panel_ConfigOptions()
     } else {
         $packageField = array(
             'Type' => 'text',
-            'Size' => '20',
-            'Description' => 'Package Name (Could not fetch packages: check server config)',
+            'Size' => '10',
+            'Description' => 'Package ID (Could not fetch packages: check server config)',
         );
     }
 
@@ -213,7 +213,7 @@ function n8n_panel_CreateAccount(array $params)
         $firstName = $params['clientsdetails']['firstname'];
         $lastName = $params['clientsdetails']['lastname'];
         $password = $params['password'];
-        $packageName = $params['configoption1']; // Corresponds to Package Name
+        $packageId = $params['configoption1']; // Corresponds to Package ID
         $n8nVersion = isset($params['configoption2']) ? $params['configoption2'] : 'latest';
 
         // Generate Instance Name: 7 digit random (a-z, 1-9)
@@ -231,7 +231,7 @@ function n8n_panel_CreateAccount(array $params)
         }
 
         // 2. Create Instance
-        $result = $client->createInstance($email, $packageName, $instanceName, $n8nVersion);
+        $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
 
         if (isset($result['status']) && $result['status'] == 'success') {
             // API formerly returned 'instance_id'. We now use 'name' (which we generated).

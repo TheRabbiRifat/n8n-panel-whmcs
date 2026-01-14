@@ -77,11 +77,11 @@ class N8nHostManagerClient
         return $this->request('GET', '/system/stats');
     }
 
-    public function createInstance($email, $packageName, $name, $version = 'latest')
+    public function createInstance($email, $packageId, $name, $version = 'latest')
     {
         return $this->request('POST', '/instances/create', [
             'email' => $email,
-            'package' => $packageName,
+            'package_id' => $packageId,
             'name' => $name,
             'version' => $version
         ]);
@@ -117,10 +117,10 @@ class N8nHostManagerClient
         return $this->request('POST', '/instances/' . $name . '/terminate');
     }
 
-    public function upgradeInstance($name, $packageName)
+    public function upgradeInstance($name, $packageId)
     {
         return $this->request('POST', '/instances/' . $name . '/upgrade', [
-            'package' => $packageName
+            'package_id' => $packageId
         ]);
     }
 
@@ -129,9 +129,9 @@ class N8nHostManagerClient
         return $this->request('GET', '/packages');
     }
 
-    public function getPackage($name)
+    public function getPackage($id)
     {
-        return $this->request('GET', '/packages/' . $name);
+        return $this->request('GET', '/packages/' . $id);
     }
 
     public function createUser($name, $email, $password)
