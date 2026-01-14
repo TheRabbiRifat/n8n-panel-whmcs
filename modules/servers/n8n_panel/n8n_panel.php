@@ -16,7 +16,11 @@ function n8n_panel_MetaData()
         'DisplayName' => 'n8n Panel',
         'APIVersion' => '1.1',
         'RequiresServer' => true,
-        'ServiceSingleSignOnLabel' => 'Login to n8n Panel',
+        'DefaultNonSSLPort' => '8448', // Default Non-SSL Connection Port
+        'DefaultSSLPort' => '8448', // Default SSL Connection Port
+        'ServiceSingleSignOnLabel' => 'Login to n8n Reseller Panel',
+        'AdminSingleSignOnLabel' => 'Login to n8n Panel as Admin/Reseller',
+    
     );
 }
 
@@ -386,6 +390,34 @@ function n8n_panel_ServiceSingleSignOn(array $params)
         );
 
     } catch (Exception $e) {
+        return array(
+            'success' => false,
+            'errorMsg' => $e->getMessage(),
+        );
+    }
+}
+
+function n8n_panel_AdminSingleSignOn(array $params)
+{
+    try {
+        // Call the service's single sign-on admin token retrieval function,
+        // using the values provided by WHMCS in `$params`.
+        $response = array();
+
+        return array(
+            'success' => true,
+            'redirectTo' => $response['redirectUrl'],
+        );
+    } catch (Exception $e) {
+        // Record the error in WHMCS's module log.
+        logModuleCall(
+            'n8n_panel',
+            __FUNCTION__,
+            $params,
+            $e->getMessage(),
+            $e->getTraceAsString()
+        );
+
         return array(
             'success' => false,
             'errorMsg' => $e->getMessage(),
