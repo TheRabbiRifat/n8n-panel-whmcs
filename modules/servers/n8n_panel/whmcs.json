@@ -1,0 +1,36 @@
+{
+    "schema": "1.0",
+    "type": "whmcs-servers",
+    "name": "n8n-panel",
+    "license": "MIT",
+    "category": "provisioning",
+    "description": {
+        "name": "n8n Panel Provisioning Module",
+        "tagline": "Provision and manage n8n instances directly from WHMCS.",
+        "long": "The n8n Panel module enables full lifecycle management of n8n instances via the n8n Host Manager API. It supports automated provisioning, suspension, termination, upgrading, and SSO.",
+        "features": [
+            "Automated Instance Provisioning",
+            "Single Sign-On (SSO) to n8n Panel",
+            "Start / Stop Instance Control",
+            "Resource Usage Statistics (CPU / RAM)",
+            "Automated Suspension & Termination",
+            "Package Upgrades"
+        ]
+    },
+    "logo": {
+        "filename": "logo.png"
+    },
+    "support": {
+        "homepage": "https://n8n.io",
+        "learn_more": "https://n8n.io",
+        "email": "support@example.com",
+        "support_url": "https://support.example.com",
+        "docs_url": "https://docs.n8n.io"
+    },
+    "authors": [
+        {
+            "name": "Developer",
+            "homepage": "https://example.com"
+        }
+    ]
+}
