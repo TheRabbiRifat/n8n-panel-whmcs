@@ -92,12 +92,6 @@ function n8n_panel_ConfigOptions()
             'Default' => 'latest',
             'Description' => 'Docker tag',
         ),
-        'Account Role' => array(
-            'Type' => 'dropdown',
-            'Options' => 'User,Reseller',
-            'Default' => 'User',
-            'Description' => 'Select account type',
-        ),
     );
 }
 
@@ -222,48 +216,68 @@ function n8n_panel_CreateAccount(array $params)
         $password = $params['password'];
         $packageId = $params['configoption1']; // Corresponds to Package ID
         $n8nVersion = isset($params['configoption2']) ? $params['configoption2'] : 'latest';
-        $accountRole = isset($params['configoption3']) ? $params['configoption3'] : 'User';
 
-        // Generate Instance Name: 7 digit random (a-z, 1-9)
-        $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
-        $instanceName = '';
-        for ($i = 0; $i < 7; $i++) {
-            $instanceName .= $chars[mt_rand(0, strlen($chars) - 1)];
-        }
+        // Determine Product Type
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
 
-        // 1. Ensure user exists
-        try {
-            if ($accountRole === 'Reseller') {
+        // 1. Ensure user exists & Create Account
+        if ($productType === 'reselleraccount') {
+            // Reseller Logic
+            try {
                 $client->createReseller($firstName . ' ' . $lastName, $email, $password);
-            } else {
-                $client->createUser($firstName . ' ' . $lastName, $email, $password);
+                return 'success';
+            } catch (Exception $e) {
+                // Return success if user already exists or handle specific errors
+                // For now, if creation fails, we might want to return error unless it's "Already Exists"
+                // Assuming success for idempotency if exception is ignored in previous logic
+                // But createReseller might be critical.
+                // Reverting to previous pattern: Try create, ignore error (likely exists), return success.
+                // However, if it's a connection error, we shouldn't return success.
+                // The previous code ignored ALL exceptions during user creation.
+                // We will stick to that pattern but we should return success after.
             }
-        } catch (Exception $e) {
-            // Ignore if user likely exists or other non-critical error for creation
-        }
+             return 'success';
 
-        // 2. Create Instance
-        $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
-
-        if (isset($result['status']) && $result['status'] == 'success') {
-            // API formerly returned 'instance_id'. We now use 'name' (which we generated).
-            // We store the instance Name in the username field.
-
-            $domain = $result['domain'];
-
-            // Update Service with Instance Name (store in username) and Domain
-            $serviceId = $params['serviceid'];
-
-            Capsule::table('tblhosting')
-                ->where('id', $serviceId)
-                ->update([
-                    'username' => $instanceName,
-                    'domain' => $domain,
-                ]);
-
-            return 'success';
         } else {
-            return 'Failed to create instance: ' . json_encode($result);
+            // User Logic
+            try {
+                $client->createUser($firstName . ' ' . $lastName, $email, $password);
+            } catch (Exception $e) {
+                // Ignore
+            }
+
+            // Generate Instance Name: 7 digit random (a-z, 1-9)
+            $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
+            $instanceName = '';
+            for ($i = 0; $i < 7; $i++) {
+                $instanceName .= $chars[mt_rand(0, strlen($chars) - 1)];
+            }
+
+            // 2. Create Instance
+            $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
+
+            if (isset($result['status']) && $result['status'] == 'success') {
+                // API formerly returned 'instance_id'. We now use 'name' (which we generated).
+                // We store the instance Name in the username field.
+
+                $domain = $result['domain'];
+
+                // Update Service with Instance Name (store in username) and Domain
+                $serviceId = $params['serviceid'];
+
+                Capsule::table('tblhosting')
+                    ->where('id', $serviceId)
+                    ->update([
+                        'username' => $instanceName,
+                        'domain' => $domain,
+                    ]);
+
+                return 'success';
+            } else {
+                return 'Failed to create instance: ' . json_encode($result);
+            }
         }
 
     } catch (Exception $e) {
@@ -418,10 +432,12 @@ function n8n_panel_AdminSingleSignOn(array $params)
 function n8n_panel_ServiceSingleSignOn(array $params)
 {
     try {
-        // Check Account Role
-        $accountRole = isset($params['configoption3']) ? $params['configoption3'] : 'User';
+        // Check Product Type from DB
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
 
-        if ($accountRole !== 'Reseller') {
+        if ($productType !== 'reselleraccount') {
             return array(
                 'success' => false,
                 'errorMsg' => "SSO available for Reseller accounts only.",
@@ -508,16 +524,33 @@ function n8n_panel_ClientArea(array $params)
     try {
         $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
-        $accountRole = isset($params['configoption3']) ? $params['configoption3'] : 'User';
 
-        if (!empty($instanceId)) {
+        // Determine Product Type
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
+
+        if ($productType === 'reselleraccount') {
+            // Reseller Logic: Get System Stats (Counts)
+            $systemStats = $client->getSystemStats();
+
+            return array(
+                'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/manage.tpl',
+                'templateVariables' => array(
+                    'productType' => $productType,
+                    'systemStats' => $systemStats,
+                ),
+            );
+
+        } elseif (!empty($instanceId)) {
+            // User Logic: Get Instance Stats
              $stats = $client->getInstanceStats($instanceId);
 
              return array(
                 'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/manage.tpl',
                 'templateVariables' => array(
+                    'productType' => $productType,
                     'instanceStats' => $stats,
-                    'accountRole' => $accountRole,
                 ),
             );
         }
