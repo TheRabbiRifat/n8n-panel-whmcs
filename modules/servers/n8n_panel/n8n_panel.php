@@ -525,46 +525,45 @@ function n8n_panel_ClientArea(array $params)
         $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
 
-        // Determine Product Type
         $productType = Capsule::table('tblproducts')
             ->where('id', $params['packageid'])
             ->value('type');
 
         if ($productType === 'reselleraccount') {
-            // Reseller Logic: Get System Stats (Counts)
+
             $systemStats = $client->getSystemStats();
 
-            return array(
-                'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/manage.tpl',
-                'templateVariables' => array(
+            return [
+                'tabOverviewReplacementTemplate' => 'manage',
+                'vars' => [
                     'productType' => $productType,
                     'systemStats' => $systemStats,
-                ),
-            );
+                ],
+            ];
 
         } elseif (!empty($instanceId)) {
-            // User Logic: Get Instance Stats
-             $stats = $client->getInstanceStats($instanceId);
 
-             return array(
-                'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/manage.tpl',
-                'templateVariables' => array(
+            $stats = $client->getInstanceStats($instanceId);
+
+            return [
+                'tabOverviewReplacementTemplate' => 'manage',
+                'vars' => [
                     'productType' => $productType,
                     'instanceStats' => $stats,
-                ),
-            );
+                ],
+            ];
         }
 
     } catch (Exception $e) {
-        // Log error but allow page to load
         logModuleCall(
             'n8n_panel',
             __FUNCTION__,
             $params,
+            null,
             $e->getMessage(),
             $e->getTraceAsString()
         );
     }
 
-    return array();
+    return [];
 }
