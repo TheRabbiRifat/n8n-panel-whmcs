@@ -21,9 +21,10 @@ This module allows you to provision and manage n8n instances within WHMCS using 
 2.  Go to **System Settings > Products/Services > Servers**.
 3.  Add a new server:
     *   **Name:** Any name (e.g., "n8n Host Manager").
-    *   **Hostname:** The hostname of your n8n Host Manager (e.g., `panel.example.com`).
+    *   **Hostname:** The hostname of your n8n Host Manager (e.g., `panel.example.com`). If using a custom port, append it (e.g., `panel.example.com:8448`). Defaults to **8448**.
     *   **Type:** Select **n8n Panel**.
     *   **Password:** Enter your **API Token** here.
+    *   **Secure:** Check this box to enable SSL Verification (Recommended). Uncheck to skip verification.
 4.  Save Changes.
 
 ### Product Setup
@@ -33,11 +34,10 @@ This module allows you to provision and manage n8n instances within WHMCS using 
 3.  Click the **Module Settings** tab.
 4.  **Module Name:** Select **n8n Panel**.
 5.  **Server Group:** Select the group containing your n8n server.
-6.  **Package ID:** Enter the numeric ID of the package from n8n Host Manager (see API docs or `/packages` endpoint).
-7.  **API Port:** (Optional) Enter a custom port if your API is not on 443/80.
-8.  **Skip SSL Verification:** (Optional) Check this if using self-signed certificates (not recommended for production).
-9.  Select **Automatically setup the product as soon as the first payment is received**.
-10. Save Changes.
+6.  **Package:** Select the desired package from the dropdown (dynamically fetched from the server).
+7.  **n8n Version:** Select the version tag (stable, latest, beta).
+8.  Select **Automatically setup the product as soon as the first payment is received**.
+9.  Save Changes.
 
 ## Requirements
 
