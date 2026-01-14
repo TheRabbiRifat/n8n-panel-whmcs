@@ -514,7 +514,7 @@ function n8n_panel_ClientArea(array $params)
              $stats = $client->getInstanceStats($instanceId);
 
              return array(
-                'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/overview.tpl',
+                'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/manage.tpl',
                 'templateVariables' => array(
                     'instanceStats' => $stats,
                     'accountRole' => $accountRole,
