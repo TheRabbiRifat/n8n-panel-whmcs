@@ -60,7 +60,8 @@ function n8n_panel_ConfigOptions()
 
             if (isset($response['packages'])) {
                 foreach ($response['packages'] as $pkg) {
-                    $packageOptions[$pkg['id']] = $pkg['name'];
+                    // Use Package Name as the key, since API now expects Name
+                    $packageOptions[$pkg['name']] = $pkg['name'];
                 }
             }
         }
@@ -77,8 +78,8 @@ function n8n_panel_ConfigOptions()
     } else {
         $packageField = array(
             'Type' => 'text',
-            'Size' => '10',
-            'Description' => 'Package ID (Could not fetch packages: check server config)',
+            'Size' => '20',
+            'Description' => 'Package Name (Could not fetch packages: check server config)',
         );
     }
 
@@ -212,7 +213,7 @@ function n8n_panel_CreateAccount(array $params)
         $firstName = $params['clientsdetails']['firstname'];
         $lastName = $params['clientsdetails']['lastname'];
         $password = $params['password'];
-        $packageId = $params['configoption1']; // Corresponds to Package ID
+        $packageName = $params['configoption1']; // Corresponds to Package Name
         $n8nVersion = isset($params['configoption2']) ? $params['configoption2'] : 'latest';
 
         // Generate Instance Name: 7 digit random (a-z, 1-9)
@@ -227,25 +228,24 @@ function n8n_panel_CreateAccount(array $params)
             $client->createUser($firstName . ' ' . $lastName, $email, $password);
         } catch (Exception $e) {
             // Ignore if user likely exists or other non-critical error for creation
-            // Ideally we check specific error code, but API.md doesn't specify "User already exists" code/message exactly
-            // It says 422 Validation Error.
-            // We proceed to create instance.
         }
 
         // 2. Create Instance
-        $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
+        $result = $client->createInstance($email, $packageName, $instanceName, $n8nVersion);
 
         if (isset($result['status']) && $result['status'] == 'success') {
-            $instanceId = $result['instance_id'];
+            // API formerly returned 'instance_id'. We now use 'name' (which we generated).
+            // We store the instance Name in the username field.
+
             $domain = $result['domain'];
 
-            // Update Service with Instance ID (store in username) and Domain
+            // Update Service with Instance Name (store in username) and Domain
             $serviceId = $params['serviceid'];
 
             Capsule::table('tblhosting')
                 ->where('id', $serviceId)
                 ->update([
-                    'username' => $instanceId,
+                    'username' => $instanceName,
                     'domain' => $domain,
                 ]);
 

@@ -77,50 +77,50 @@ class N8nHostManagerClient
         return $this->request('GET', '/system/stats');
     }
 
-    public function createInstance($email, $packageId, $name, $version = 'latest')
+    public function createInstance($email, $packageName, $name, $version = 'latest')
     {
         return $this->request('POST', '/instances/create', [
             'email' => $email,
-            'package_id' => $packageId,
+            'package' => $packageName,
             'name' => $name,
             'version' => $version
         ]);
     }
 
-    public function getInstanceStats($id)
+    public function getInstanceStats($name)
     {
-        return $this->request('GET', '/instances/' . $id . '/stats');
+        return $this->request('GET', '/instances/' . $name . '/stats');
     }
 
-    public function startInstance($id)
+    public function startInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/start');
+        return $this->request('POST', '/instances/' . $name . '/start');
     }
 
-    public function stopInstance($id)
+    public function stopInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/stop');
+        return $this->request('POST', '/instances/' . $name . '/stop');
     }
 
-    public function suspendInstance($id)
+    public function suspendInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/suspend');
+        return $this->request('POST', '/instances/' . $name . '/suspend');
     }
 
-    public function unsuspendInstance($id)
+    public function unsuspendInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/unsuspend');
+        return $this->request('POST', '/instances/' . $name . '/unsuspend');
     }
 
-    public function terminateInstance($id)
+    public function terminateInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/terminate');
+        return $this->request('POST', '/instances/' . $name . '/terminate');
     }
 
-    public function upgradeInstance($id, $packageId)
+    public function upgradeInstance($name, $packageName)
     {
-        return $this->request('POST', '/instances/' . $id . '/upgrade', [
-            'package_id' => $packageId
+        return $this->request('POST', '/instances/' . $name . '/upgrade', [
+            'package' => $packageName
         ]);
     }
 
@@ -129,9 +129,9 @@ class N8nHostManagerClient
         return $this->request('GET', '/packages');
     }
 
-    public function getPackage($id)
+    public function getPackage($name)
     {
-        return $this->request('GET', '/packages/' . $id);
+        return $this->request('GET', '/packages/' . $name);
     }
 
     public function createUser($name, $email, $password)
