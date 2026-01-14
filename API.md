@@ -98,7 +98,7 @@ Provision a new n8n instance for an existing user.
 #### Get Instance Stats
 Get real-time resource usage for a specific instance.
 
-*   **Endpoint:** `GET /instances/{id}/stats`
+*   **Endpoint:** `GET /instances/{name}/stats`
 *   **Response:**
     ```json
     {
@@ -115,11 +115,11 @@ Get real-time resource usage for a specific instance.
 #### Instance Power Actions
 Perform power operations on an instance.
 
-*   **Start:** `POST /instances/{id}/start`
-*   **Stop:** `POST /instances/{id}/stop`
-*   **Suspend:** `POST /instances/{id}/suspend` (Stops and marks as suspended)
-*   **Unsuspend:** `POST /instances/{id}/unsuspend` (Unmarks and starts)
-*   **Terminate:** `POST /instances/{id}/terminate` (Permanently deletes data)
+*   **Start:** `POST /instances/{name}/start`
+*   **Stop:** `POST /instances/{name}/stop`
+*   **Suspend:** `POST /instances/{name}/suspend` (Stops and marks as suspended)
+*   **Unsuspend:** `POST /instances/{name}/unsuspend` (Unmarks and starts)
+*   **Terminate:** `POST /instances/{name}/terminate` (Permanently deletes data)
 
 **Response:**
 ```json
@@ -129,7 +129,7 @@ Perform power operations on an instance.
 #### Upgrade Package
 Change the resource package for an instance. New limits are applied immediately.
 
-*   **Endpoint:** `POST /instances/{id}/upgrade`
+*   **Endpoint:** `POST /instances/{name}/upgrade`
 *   **Body Parameters:**
     *   `package_id` (int, required): New package ID.
 *   **Response:**

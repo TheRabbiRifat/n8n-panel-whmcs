@@ -60,6 +60,7 @@ function n8n_panel_ConfigOptions()
 
             if (isset($response['packages'])) {
                 foreach ($response['packages'] as $pkg) {
+                    // Use Package ID as the key
                     $packageOptions[$pkg['id']] = $pkg['name'];
                 }
             }
@@ -227,25 +228,24 @@ function n8n_panel_CreateAccount(array $params)
             $client->createUser($firstName . ' ' . $lastName, $email, $password);
         } catch (Exception $e) {
             // Ignore if user likely exists or other non-critical error for creation
-            // Ideally we check specific error code, but API.md doesn't specify "User already exists" code/message exactly
-            // It says 422 Validation Error.
-            // We proceed to create instance.
         }
 
         // 2. Create Instance
         $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
 
         if (isset($result['status']) && $result['status'] == 'success') {
-            $instanceId = $result['instance_id'];
+            // API formerly returned 'instance_id'. We now use 'name' (which we generated).
+            // We store the instance Name in the username field.
+
             $domain = $result['domain'];
 
-            // Update Service with Instance ID (store in username) and Domain
+            // Update Service with Instance Name (store in username) and Domain
             $serviceId = $params['serviceid'];
 
             Capsule::table('tblhosting')
                 ->where('id', $serviceId)
                 ->update([
-                    'username' => $instanceId,
+                    'username' => $instanceName,
                     'domain' => $domain,
                 ]);
 
