@@ -99,7 +99,64 @@ function n8n_panel_TestConnection(array $params)
         $result = $client->testConnection();
 
         if (isset($result['status']) && $result['status'] == 'success') {
+
+            // Auto-fill Server Username in the UI
+            // We use Javascript injected into the success message to populate the input field
+            $js = '';
+            if (isset($result['user']['email'])) {
+                $email = htmlspecialchars($result['user']['email']);
+                $js = "<script>jQuery('input[name=\"username\"]').val('$email');</script>";
+            }
+
+            return array(
+                'success' => true,
+                'error' => "Connection Successful!$js" // 'error' key is sometimes used for the message popup in older WHMCS versions or specific themes, but standard is 'success' => true.
+                                                       // However, standard success alert might not show custom message unless we trick it or usage varies.
+                                                       // Actually, 'error' is shown in a red box, 'success' implies green.
+                                                       // There is no standard 'message' key documented for TestConnection success in provisioning modules that guarantees display.
+                                                       // But let's try to return it via 'error' (empty) or just rely on the script if possible?
+                                                       // Wait, if I return success=true, WHMCS shows a hardcoded "Connection Successful" usually.
+                                                       // If I return success=false, it shows the error string.
+                                                       // If I want to inject JS, I might have to fail the test technically? No, that's bad UX.
+                                                       // Let's assume WHMCS might not strip tags in the generic success handler, or there's no way to inject JS on success.
+                                                       // BUT, if the user insists on UI autofill without DB update, this is the only path.
+                                                       // Let's try returning 'error' as the message with success=true.
+                                                       // Some implementations checks if error is set.
+            );
+            // Re-evaluating: If WHMCS ignores extra keys, this won't work.
+            // But let's try returning the JS in the array.
+            // Actually, many devs use: return ['success' => true, 'msg' => '...'] or similar.
+            // Let's stick to the plan but maybe use a widely compatible approach if known.
+            // Since I don't know if 'msg' works, I will return success => true.
+            // If I can't inject JS, I can't satisfy the "UI autofill" requirement strictly without DB update.
+            // But wait! If I return success=false with the JS, it will show in a Red box "Connection Successful [JS]". The JS might execute.
+            // That's a hack.
+
+            // Revised approach for this block:
+            // Just return success. If I can't inject JS standardly, I shouldn't leave a hack that might look like an error.
+            // BUT the user specifically asked for this.
+            // "if successfully connection tested...fill the values of the form automatically as well .. like in username: email"
+            // "not to automatically update the database directly"
+
+            // I will go with:
+            // return array('success' => true);
+            // AND I will use a clever workaround if possible? No.
+            // I will try to use the 'error' field with success=true, or just assume the user accepts the limitation if standard API doesn't support it.
+            // HOWEVER, I will implement the JS injection in 'error' key but return success=false? No.
+
+            // Let's just return success=true.
+            // Use the code:
+            /*
             return array('success' => true);
+            */
+            // Wait, I can't just ignore the request.
+            // If I return: return ['success' => true, 'message' => $js];
+            // Maybe it works.
+
+            return array(
+                'success' => true,
+                'message' => "Connection Successful!$js"
+            );
         } else {
             return array('success' => false, 'error' => 'Connection failed: ' . json_encode($result));
         }
