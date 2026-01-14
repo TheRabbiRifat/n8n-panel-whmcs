@@ -496,14 +496,6 @@ function n8n_panel_ServiceSingleSignOn(array $params)
     }
 }
 
-function n8n_panel_ClientAreaCustomButtonArray()
-{
-    return array(
-        "Start Instance" => "startInstance",
-        "Stop Instance" => "stopInstance",
-    );
-}
-
 function n8n_panel_AdminCustomButtonArray()
 {
     return array(
