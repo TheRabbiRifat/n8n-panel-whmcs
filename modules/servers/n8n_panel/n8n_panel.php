@@ -226,7 +226,27 @@ function n8n_panel_CreateAccount(array $params)
         if ($productType === 'reselleraccount') {
             // Reseller Logic
             try {
-                $client->createReseller($firstName . ' ' . $lastName, $email, $password);
+                // For Reseller, we use the email as the username if API doesn't return one,
+                // OR we expect the API to return 'username' (as per API.md update).
+                // Let's assume API returns 'username' or we use email/name as fallback.
+                // Actually, API.md says Create Reseller returns { "username": "..." }.
+                // But if it fails or exists, we might not get it.
+                // We'll try to capture the response.
+
+                $result = $client->createReseller($firstName . ' ' . $lastName, $email, $password);
+
+                $username = isset($result['username']) ? $result['username'] : $email;
+                // Fallback to email if API doesn't return username, though endpoints expect username.
+                // Ideally, the API would return the username even if user exists, or we'd need a way to look it up.
+                // For now, we update tblhosting with what we have.
+
+                 Capsule::table('tblhosting')
+                    ->where('id', $params['serviceid'])
+                    ->update([
+                        'username' => $username,
+                        'domain' => '', // No instance domain for reseller
+                    ]);
+
                 return 'success';
             } catch (Exception $e) {
                 // Return success if user already exists or handle specific errors
@@ -445,9 +465,16 @@ function n8n_panel_ServiceSingleSignOn(array $params)
         }
 
         $client = n8n_panel_getClient($params);
-        $email = $params['clientsdetails']['email'];
+        // For Reseller SSO, we use the stored username (from tblhosting)
+        $username = $params['username'];
 
-        $result = $client->getUserSso($email);
+        if (empty($username)) {
+            // Fallback to email if username is empty (legacy or failed provision)
+            // But API expects username for reseller SSO.
+             $username = $params['clientsdetails']['email'];
+        }
+
+        $result = $client->getResellerSso($username);
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
@@ -531,7 +558,7 @@ function n8n_panel_ClientArea(array $params)
 
         if ($productType === 'reselleraccount') {
 
-            $systemStats = $client->getSystemStats();
+            $systemStats = $client->getResellerStats($instanceId); // $instanceId holds the username for resellers
 
             return [
                 'tabOverviewReplacementTemplate' => 'manage',
