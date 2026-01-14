@@ -152,6 +152,16 @@ class N8nHostManagerClient
         ]);
     }
 
+    public function getResellerStats($username)
+    {
+        return $this->request('GET', '/resellers/' . $username . '/stats');
+    }
+
+    public function getResellerSso($username)
+    {
+        return $this->request('POST', '/resellers/' . $username . '/sso');
+    }
+
     public function getUserSso($email)
     {
         return $this->request('POST', '/users/sso', [
