@@ -17,6 +17,7 @@ function n8n_panel_MetaData()
         'APIVersion' => '1.1',
         'RequiresServer' => true,
         'AdminSingleSignOnLabel' => 'Login to n8n Panel',
+        'ServiceSingleSignOnLabel' => 'Login to Panel',
     );
 }
 
@@ -90,6 +91,12 @@ function n8n_panel_ConfigOptions()
             'Options' => 'stable,latest,beta',
             'Default' => 'latest',
             'Description' => 'Docker tag',
+        ),
+        'Account Role' => array(
+            'Type' => 'dropdown',
+            'Options' => 'User,Reseller',
+            'Default' => 'User',
+            'Description' => 'Select account type',
         ),
     );
 }
@@ -215,6 +222,7 @@ function n8n_panel_CreateAccount(array $params)
         $password = $params['password'];
         $packageId = $params['configoption1']; // Corresponds to Package ID
         $n8nVersion = isset($params['configoption2']) ? $params['configoption2'] : 'latest';
+        $accountRole = isset($params['configoption3']) ? $params['configoption3'] : 'User';
 
         // Generate Instance Name: 7 digit random (a-z, 1-9)
         $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
@@ -225,7 +233,11 @@ function n8n_panel_CreateAccount(array $params)
 
         // 1. Ensure user exists
         try {
-            $client->createUser($firstName . ' ' . $lastName, $email, $password);
+            if ($accountRole === 'Reseller') {
+                $client->createReseller($firstName . ' ' . $lastName, $email, $password);
+            } else {
+                $client->createUser($firstName . ' ' . $lastName, $email, $password);
+            }
         } catch (Exception $e) {
             // Ignore if user likely exists or other non-critical error for creation
         }
@@ -382,6 +394,44 @@ function n8n_panel_AdminSingleSignOn(array $params)
 
         // 2. Get SSO URL for Admin
         $result = $client->getUserSso($adminEmail);
+
+        if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
+             return array(
+                'success' => true,
+                'redirectTo' => $result['redirect_url'],
+            );
+        }
+
+        return array(
+            'success' => false,
+            'errorMsg' => "Failed to get SSO URL",
+        );
+
+    } catch (Exception $e) {
+        return array(
+            'success' => false,
+            'errorMsg' => $e->getMessage(),
+        );
+    }
+}
+
+function n8n_panel_ServiceSingleSignOn(array $params)
+{
+    try {
+        // Check Account Role
+        $accountRole = isset($params['configoption3']) ? $params['configoption3'] : 'User';
+
+        if ($accountRole !== 'Reseller') {
+            return array(
+                'success' => false,
+                'errorMsg' => "SSO available for Reseller accounts only.",
+            );
+        }
+
+        $client = n8n_panel_getClient($params);
+        $email = $params['clientsdetails']['email'];
+
+        $result = $client->getUserSso($email);
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
