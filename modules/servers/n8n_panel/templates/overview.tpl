@@ -42,6 +42,9 @@
             <div class="text-center">
                 <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=startInstance" class="btn btn-success">Start Instance</a>
                 <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=stopInstance" class="btn btn-danger">Stop Instance</a>
+                {if $accountRole eq 'Reseller'}
+                    <a href="clientarea.php?action=productdetails&id={$serviceid}&dosinglesignon=1" class="btn btn-primary" target="_blank">Login to Panel</a>
+                {/if}
             </div>
 
         {else}

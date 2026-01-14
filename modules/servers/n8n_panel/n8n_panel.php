@@ -508,6 +508,7 @@ function n8n_panel_ClientArea(array $params)
     try {
         $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
+        $accountRole = isset($params['configoption3']) ? $params['configoption3'] : 'User';
 
         if (!empty($instanceId)) {
              $stats = $client->getInstanceStats($instanceId);
@@ -516,6 +517,7 @@ function n8n_panel_ClientArea(array $params)
                 'tabOverviewReplacementTemplate' => 'modules/servers/n8n_panel/templates/overview.tpl',
                 'templateVariables' => array(
                     'instanceStats' => $stats,
+                    'accountRole' => $accountRole,
                 ),
             );
         }
