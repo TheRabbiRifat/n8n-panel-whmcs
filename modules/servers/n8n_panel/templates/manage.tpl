@@ -1,48 +1,56 @@
-<h2>Custom Client Area Page</h2>
-
-<p>This is an example of an additional custom page within a module's client area product management pages.</p>
-
-<p>Everything that is available in the overview is also available in this template file along with any custom defined template variables.</p>
-
-<hr>
-
 <div class="row">
-    <div class="col-sm-5">
-        {$LANG.orderproduct}
-    </div>
-    <div class="col-sm-7">
-        {$groupname} - {$product}
-    </div>
-</div>
+    <div class="col-sm-12">
+        <h3>Instance Status</h3>
 
-<div class="row">
-    <div class="col-sm-5">
-        Extra Variable 1
-    </div>
-    <div class="col-sm-7">
-        {$extraVariable1}
-    </div>
-</div>
+        {if $instanceStats.status == 'success'}
+            <div class="alert {if $instanceStats.instance_status == 'running'}alert-success{else}alert-warning{/if}">
+                Status: <strong>{$instanceStats.instance_status|ucfirst}</strong>
+            </div>
 
-<div class="row">
-    <div class="col-sm-5">
-        Extra Variable 2
-    </div>
-    <div class="col-sm-7">
-        {$extraVariable2}
-    </div>
-</div>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">CPU Usage</h3>
+                        </div>
+                        <div class="panel-body text-center">
+                            <h2>{$instanceStats.cpu_percent}%</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">Memory Usage</h3>
+                        </div>
+                        <div class="panel-body text-center">
+                            <h2>{$instanceStats.memory_usage} / {$instanceStats.memory_limit}</h2>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" aria-valuenow="{$instanceStats.memory_percent}" aria-valuemin="0" aria-valuemax="100" style="width: {$instanceStats.memory_percent}%;">
+                                    {$instanceStats.memory_percent}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-<hr>
+            <p><strong>Domain:</strong> <a href="http://{$instanceStats.domain}" target="_blank">{$instanceStats.domain}</a></p>
 
-<div class="row">
-    <div class="col-sm-4">
-        <form method="post" action="clientarea.php?action=productdetails">
-            <input type="hidden" name="id" value="{$serviceid}" />
-            <button type="submit" class="btn btn-default btn-block">
-                <i class="fa fa-arrow-circle-left"></i>
-                Back to Overview
-            </button>
-        </form>
+            <hr>
+
+            <div class="text-center">
+                <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=startInstance" class="btn btn-success">Start Instance</a>
+                <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=stopInstance" class="btn btn-danger">Stop Instance</a>
+                {if $accountRole eq 'Reseller'}
+                    <a href="clientarea.php?action=productdetails&id={$serviceid}&dosinglesignon=1" class="btn btn-primary" target="_blank">Login to Panel</a>
+                {/if}
+            </div>
+
+        {else}
+            <div class="alert alert-danger">
+                Unable to retrieve instance stats.
+            </div>
+        {/if}
     </div>
 </div>
