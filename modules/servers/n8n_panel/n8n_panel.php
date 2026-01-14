@@ -31,11 +31,18 @@ function n8n_panel_ConfigOptions()
         'API Port' => array(
             'Type' => 'text',
             'Size' => '5',
+            'Default' => '8448',
             'Description' => 'Override default port (optional)',
         ),
         'Skip SSL Verification' => array(
             'Type' => 'yesno',
             'Description' => 'Tick to skip SSL verification (not recommended)',
+        ),
+        'n8n Version' => array(
+            'Type' => 'text',
+            'Size' => '10',
+            'Default' => 'latest',
+            'Description' => 'Docker tag (e.g. latest, 1.0.0)',
         ),
     );
 }
@@ -52,7 +59,7 @@ function n8n_panel_getClient($params)
 
     // Check if custom port is set in Config Options (Index 2)
     // Note: ConfigOptions order matters.
-    // 1: Package ID, 2: API Port, 3: Skip SSL Verification
+    // 1: Package ID, 2: API Port, 3: Skip SSL Verification, 4: n8n Version
     $customPort = isset($params['configoption2']) ? trim($params['configoption2']) : '';
     $skipSsl = isset($params['configoption3']) && $params['configoption3'] == 'on';
 
@@ -61,16 +68,17 @@ function n8n_panel_getClient($params)
         $hostname = "https://" . $hostname;
     }
 
-    // If custom port is provided, insert it into the hostname if not already present
-    if (!empty($customPort)) {
-        $parts = parse_url($hostname);
-        if (!isset($parts['port'])) {
-             // Reconstruct URL with port
-             $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
-             $host = isset($parts['host']) ? $parts['host'] : '';
-             $path = isset($parts['path']) ? $parts['path'] : '';
-             $hostname = $scheme . $host . ':' . $customPort . $path;
-        }
+    // Use custom port if provided, otherwise default to 8448
+    $portToUse = !empty($customPort) ? $customPort : '8448';
+
+    // Insert port into the hostname if not already present
+    $parts = parse_url($hostname);
+    if (!isset($parts['port'])) {
+         // Reconstruct URL with port
+         $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
+         $host = isset($parts['host']) ? $parts['host'] : '';
+         $path = isset($parts['path']) ? $parts['path'] : '';
+         $hostname = $scheme . $host . ':' . $portToUse . $path;
     }
 
     // Append /api/integration if not present (based on API.md Base URL)
@@ -113,6 +121,7 @@ function n8n_panel_CreateAccount(array $params)
         $lastName = $params['clientsdetails']['lastname'];
         $password = $params['password'];
         $packageId = $params['configoption1']; // Corresponds to Package ID
+        $n8nVersion = isset($params['configoption4']) ? $params['configoption4'] : 'latest';
 
         // Generate Instance Name: 7 digit random (a-z, 1-9)
         $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
@@ -132,7 +141,7 @@ function n8n_panel_CreateAccount(array $params)
         }
 
         // 2. Create Instance
-        $result = $client->createInstance($email, $packageId, $instanceName);
+        $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
 
         if (isset($result['status']) && $result['status'] == 'success') {
             $instanceId = $result['instance_id'];
@@ -234,6 +243,34 @@ function n8n_panel_ChangePackage(array $params)
     } catch (Exception $e) {
         return $e->getMessage();
     }
+}
+
+function n8n_panel_AdminServicesTabFields(array $params)
+{
+    try {
+        $client = n8n_panel_getClient($params);
+        $instanceId = $params['username'];
+
+        if (!empty($instanceId)) {
+            $stats = $client->getInstanceStats($instanceId);
+
+            if (isset($stats['status']) && $stats['status'] == 'success') {
+                return array(
+                    'Instance Status' => ucfirst($stats['instance_status']),
+                    'CPU Usage' => $stats['cpu_percent'] . '%',
+                    'Memory Usage' => $stats['memory_usage'] . ' / ' . $stats['memory_limit'] . ' (' . $stats['memory_percent'] . '%)',
+                    'Domain' => '<a href="http://' . $stats['domain'] . '" target="_blank">' . $stats['domain'] . '</a>',
+                );
+            }
+        }
+    } catch (Exception $e) {
+        // If API fails, just return nothing or error
+        return array(
+            'Instance Status' => 'Error retrieving stats: ' . $e->getMessage(),
+        );
+    }
+
+    return array();
 }
 
 function n8n_panel_ServiceSingleSignOn(array $params)
