@@ -38,7 +38,6 @@ Verify your API token is valid and the server is reachable.
       "message": "Connection successful",
       "hostname": "server-01.example.com",
       "ip": "192.168.1.100",
-      "detected_url": "https://your-panel-domain.com",
       "user": {
         "id": 1,
         "name": "Admin User",
@@ -48,10 +47,10 @@ Verify your API token is valid and the server is reachable.
     ```
 
 #### Get System Stats
-Retrieve server health metrics and usage counts. The response varies based on user role (Admin vs Reseller).
+Retrieve server health metrics and usage counts.
 
 *   **Endpoint:** `GET /system/stats`
-*   **Response (Admin):**
+*   **Response:**
     ```json
     {
       "status": "success",
@@ -72,18 +71,6 @@ Retrieve server health metrics and usage counts. The response varies based on us
       }
     }
     ```
-*   **Response (Reseller):**
-    ```json
-    {
-      "status": "success",
-      "server_status": "online",
-      "load_averages": { "1": 0.5, "5": 0.3, "15": 0.1 },
-      "counts": {
-        "users": 2,
-        "instances_total": 3
-      }
-    }
-    ```
 
 ---
 
@@ -96,7 +83,7 @@ Provision a new n8n instance for an existing user.
 *   **Body Parameters:**
     *   `email` (string, required): Existing user email.
     *   `package_id` (int, required): ID of the resource package.
-    *   `name` (string, required): Unique instance name (alpha-dash, used for subdomain).
+    *   `name` (string, required): Unique instance name (alpha-dash).
     *   `version` (string, optional): n8n version tag (default: 'latest').
 *   **Response:**
     ```json
@@ -111,7 +98,7 @@ Provision a new n8n instance for an existing user.
 #### Get Instance Stats
 Get real-time resource usage for a specific instance.
 
-*   **Endpoint:** `GET /instances/{name}/stats`
+*   **Endpoint:** `GET /instances/{id}/stats`
 *   **Response:**
     ```json
     {
@@ -128,11 +115,11 @@ Get real-time resource usage for a specific instance.
 #### Instance Power Actions
 Perform power operations on an instance.
 
-*   **Start:** `POST /instances/{name}/start`
-*   **Stop:** `POST /instances/{name}/stop`
-*   **Suspend:** `POST /instances/{name}/suspend` (Stops and marks as suspended)
-*   **Unsuspend:** `POST /instances/{name}/unsuspend` (Unmarks and starts)
-*   **Terminate:** `POST /instances/{name}/terminate` (Permanently deletes data)
+*   **Start:** `POST /instances/{id}/start`
+*   **Stop:** `POST /instances/{id}/stop`
+*   **Suspend:** `POST /instances/{id}/suspend` (Stops and marks as suspended)
+*   **Unsuspend:** `POST /instances/{id}/unsuspend` (Unmarks and starts)
+*   **Terminate:** `POST /instances/{id}/terminate` (Permanently deletes data)
 
 **Response:**
 ```json
@@ -140,9 +127,9 @@ Perform power operations on an instance.
 ```
 
 #### Upgrade Package
-Change the resource package for an instance. New limits are applied immediately via live update.
+Change the resource package for an instance. New limits are applied immediately.
 
-*   **Endpoint:** `POST /instances/{name}/upgrade`
+*   **Endpoint:** `POST /instances/{id}/upgrade`
 *   **Body Parameters:**
     *   `package_id` (int, required): New package ID.
 *   **Response:**
@@ -167,58 +154,38 @@ Get all available resource packages.
     {
       "status": "success",
       "packages": [
-        { "id": 1, "name": "Starter", "cpu_limit": 1.0, "ram_limit": 1.0, "disk_limit": 10, "is_active": true }
+        { "id": 1, "name": "Starter", "cpu_limit": 1.0, "ram_limit": 1.0, "disk_limit": 10 }
       ]
     }
     ```
 
 #### Get Package Details
-Get details for a single package.
-
 *   **Endpoint:** `GET /packages/{id}`
-*   **Response:**
-    ```json
-    {
-      "status": "success",
-      "package": {
-        "id": 1,
-        "name": "Starter",
-        "cpu_limit": 1.0,
-        "ram_limit": 1.0,
-        "disk_limit": 10,
-        "created_at": "2024-01-01T00:00:00.000000Z"
-      }
-    }
-    ```
 
 #### Create User
-Create a new standard user.
+Create a new standard user. (Admin or Reseller)
 
 *   **Endpoint:** `POST /users`
 *   **Body Parameters:**
-    *   `name` (string, required): Full Name.
-    *   `email` (string, required): Valid Email Address.
-    *   `password` (string, required): Minimum 8 characters.
+    *   `name`, `email`, `password` (all required)
 *   **Response:**
     ```json
     { "status": "success", "user_id": 20 }
     ```
 
 #### Create Reseller
-Create a new user with the 'reseller' role. (Admin only)
+Create a new user with 'reseller' role.
 
 *   **Endpoint:** `POST /resellers`
 *   **Body Parameters:**
-    *   `name` (string, required): Full Name.
-    *   `email` (string, required): Valid Email Address.
-    *   `password` (string, required): Minimum 8 characters.
+    *   `name`, `email`, `password` (all required)
 *   **Response:**
     ```json
     { "status": "success", "user_id": 15 }
     ```
 
 #### User SSO
-Generate a temporary auto-login URL for a specific user. Resellers can only access their own users.
+Generate a temporary auto-login URL for a specific user.
 
 *   **Endpoint:** `POST /users/sso`
 *   **Body Parameters:**
@@ -227,7 +194,7 @@ Generate a temporary auto-login URL for a specific user. Resellers can only acce
     ```json
     {
       "status": "success",
-      "redirect_url": "https://panel-domain.com/sso/login/5?expires=1704067200&signature=..."
+      "redirect_url": "https://panel-domain.com/sso/login/5?signature=..."
     }
     ```
 
@@ -240,6 +207,6 @@ The API returns standard HTTP status codes:
 *   `401`: Unauthenticated (Missing/Invalid Token)
 *   `403`: Unauthorized (Insufficient Permissions or IP not whitelisted)
 *   `404`: Resource Not Found
-*   `422`: Validation Error (Check `errors` object in response body)
-*   `429`: Too Many Requests (Rate limit: 60 requests/minute)
+*   `422`: Validation Error
+*   `429`: Too Many Requests
 *   `500`: Server Error
