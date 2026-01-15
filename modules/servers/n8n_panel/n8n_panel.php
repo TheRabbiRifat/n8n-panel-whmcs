@@ -226,11 +226,20 @@ function n8n_panel_CreateAccount(array $params)
         if ($productType === 'reselleraccount') {
             // Reseller Logic
             try {
-                $result = $client->createReseller($firstName . ' ' . $lastName, $email, $password);
+                $username = $params['username'];
+                if (empty($username)) {
+                    // Fallback: use email or derived username
+                    $username = $params['clientsdetails']['email'];
+                }
 
-                $username = isset($result['username']) ? $result['username'] : $email;
+                $result = $client->createReseller($firstName . ' ' . $lastName, $username, $email, $password);
 
-                 Capsule::table('tblhosting')
+                // If result doesn't return username, we rely on what we sent.
+                // However, API usually returns the created object.
+                // We'll update tblhosting with the confirmed username.
+                // API.md for createReseller doesn't explicitly show response but implies success.
+
+                Capsule::table('tblhosting')
                     ->where('id', $params['serviceid'])
                     ->update([
                         'username' => $username,
@@ -245,11 +254,7 @@ function n8n_panel_CreateAccount(array $params)
 
         } else {
             // User Logic
-            try {
-                $client->createUser($firstName . ' ' . $lastName, $email, $password);
-            } catch (Exception $e) {
-                // Ignore
-            }
+            // createUser removed from API. Instance is assigned to Admin (Token Holder).
 
             // Generate Instance Name: 7 digit random (a-z, 1-9)
             $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
@@ -259,7 +264,7 @@ function n8n_panel_CreateAccount(array $params)
             }
 
             // 2. Create Instance
-            $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
+            $result = $client->createInstance($packageId, $instanceName, $n8nVersion);
 
             if (isset($result['status']) && $result['status'] == 'success') {
                 // API formerly returned 'instance_id'. We now use 'name' (which we generated).
@@ -469,16 +474,13 @@ function n8n_panel_ServiceSingleSignOn(array $params)
         }
 
         $client = n8n_panel_getClient($params);
-        // For Reseller SSO, we use the stored username (from tblhosting)
-        $username = $params['username'];
 
-        if (empty($username)) {
-            // Fallback to email if username is empty (legacy or failed provision)
-            // But API expects username for reseller SSO.
-             $username = $params['clientsdetails']['email'];
-        }
+        // For Reseller SSO, we now use getUserSso which takes email
+        // We can get email from clientsdetails or we might need to look up the reseller?
+        // Usually, reseller email is the client email.
+        $email = $params['clientsdetails']['email'];
 
-        $result = $client->getResellerSso($username);
+        $result = $client->getUserSso($email);
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
