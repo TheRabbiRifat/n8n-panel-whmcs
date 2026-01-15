@@ -78,7 +78,8 @@ function n8n_panel_LoaderPackageId(array $params)
         $list = [];
         if (isset($response['packages'])) {
             foreach ($response['packages'] as $pkg) {
-                $list[$pkg['id']] = $pkg['name'];
+                // Return Name as key and value
+                $list[$pkg['name']] = $pkg['name'];
             }
         }
         return $list;
@@ -86,6 +87,19 @@ function n8n_panel_LoaderPackageId(array $params)
     } catch (Exception $e) {
         throw new Exception("Error loading packages: " . $e->getMessage());
     }
+}
+
+function n8n_panel_getPackageIdByName(N8nHostManagerClient $client, $name)
+{
+    $response = $client->getPackages();
+    if (isset($response['packages'])) {
+        foreach ($response['packages'] as $pkg) {
+            if ($pkg['name'] === $name) {
+                return $pkg['id'];
+            }
+        }
+    }
+    throw new Exception("Package not found: " . $name);
 }
 
 function n8n_panel_getClient($params)
@@ -144,7 +158,8 @@ function n8n_panel_CreateAccount(array $params)
         $firstName = $params['clientsdetails']['firstname'];
         $lastName = $params['clientsdetails']['lastname'];
         $password = $params['password'];
-        $packageId = $params['configoption1'];
+        // ConfigOption1 now contains Package Name
+        $packageName = $params['configoption1'];
         $n8nVersion = isset($params['configoption2']) ? $params['configoption2'] : 'latest';
         $productType = $params['producttype'];
 
@@ -154,6 +169,11 @@ function n8n_panel_CreateAccount(array $params)
                 if (empty($username)) {
                     $username = $params['clientsdetails']['email'];
                 }
+
+                // For Reseller, we might also need package limits?
+                // API `createReseller` takes instance_limit. Maybe mapped from package?
+                // But current API call just passes name/email/pass.
+                // We will proceed as before.
 
                 $client->createReseller($firstName . ' ' . $lastName, $username, $email, $password);
 
@@ -170,6 +190,9 @@ function n8n_panel_CreateAccount(array $params)
             }
 
         } else {
+            // Resolve Package Name to ID
+            $packageId = n8n_panel_getPackageIdByName($client, $packageName);
+
             // Generate Instance Name
             $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
             $instanceName = '';
@@ -281,11 +304,13 @@ function n8n_panel_ChangePackage(array $params)
     try {
         $client = n8n_panel_getClient($params);
         $instanceId = $params['username'];
-        $newPackageId = $params['configoption1'];
+        $newPackageName = $params['configoption1'];
 
         if (empty($instanceId)) {
             return "Instance ID not found in username field.";
         }
+
+        $newPackageId = n8n_panel_getPackageIdByName($client, $newPackageName);
 
         $client->upgradeInstance($instanceId, $newPackageId);
         return 'success';
@@ -370,14 +395,6 @@ function n8n_panel_ServiceSingleSignOn(array $params)
 {
     try {
         $productType = $params['producttype'];
-
-        if ($productType !== 'reselleraccount') {
-            return array(
-                'success' => false,
-                'errorMsg' => "SSO available for Reseller accounts only.",
-            );
-        }
-
         $client = n8n_panel_getClient($params);
         $username = $params['username'];
 
@@ -385,7 +402,12 @@ function n8n_panel_ServiceSingleSignOn(array $params)
              $username = $params['clientsdetails']['email'];
         }
 
-        $result = $client->getResellerSso($username);
+        if ($productType === 'reselleraccount') {
+            $result = $client->getResellerSso($username);
+        } else {
+            // Standard User SSO
+            $result = $client->getUserSso($username);
+        }
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
