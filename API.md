@@ -38,7 +38,6 @@ Verify your API token is valid and the server is reachable.
       "message": "Connection successful",
       "hostname": "server-01.example.com",
       "ip": "192.168.1.100",
-      "detected_url": "https://your-panel-domain.com",
       "user": {
         "id": 1,
         "name": "Admin User",
@@ -48,10 +47,10 @@ Verify your API token is valid and the server is reachable.
     ```
 
 #### Get System Stats
-Retrieve server health metrics and usage counts. The response varies based on user role (Admin vs Reseller).
+Retrieve server health metrics and usage counts.
 
 *   **Endpoint:** `GET /system/stats`
-*   **Response (Admin):**
+*   **Response:**
     ```json
     {
       "status": "success",
@@ -72,47 +71,19 @@ Retrieve server health metrics and usage counts. The response varies based on us
       }
     }
     ```
-*   **Response (Reseller):**
-    ```json
-    {
-      "status": "success",
-      "server_status": "online",
-      "load_averages": { "1": 0.5, "5": 0.3, "15": 0.1 },
-      "counts": {
-        "users": 2,
-        "instances_total": 3
-      }
-    }
-    ```
 
 ---
 
 ### 2. Instance Management
 
-#### List Instances
-Get all instances accessible to the user.
-
-*   **Endpoint:** `GET /instances`
-*   **Response:**
-    ```json
-    [
-      {
-        "id": 12,
-        "name": "my-instance",
-        "domain": "my-instance.panel-domain.com",
-        "user_id": 1,
-        "package": { ... }
-      }
-    ]
-    ```
-
 #### Create Instance
-Provision a new n8n instance. The instance is assigned to the authenticated user (Admin or Reseller).
+Provision a new n8n instance for an existing user.
 
 *   **Endpoint:** `POST /instances/create`
 *   **Body Parameters:**
+    *   `email` (string, required): Existing user email.
     *   `package_id` (int, required): ID of the resource package.
-    *   `name` (string, required): Unique instance name (alpha-dash, used for subdomain).
+    *   `name` (string, required): Unique instance name (alpha-dash).
     *   `version` (string, optional): n8n version tag (default: 'latest').
 *   **Response:**
     ```json
@@ -120,7 +91,7 @@ Provision a new n8n instance. The instance is assigned to the authenticated user
       "status": "success",
       "instance_id": 12,
       "domain": "my-instance.panel-domain.com",
-      "user_id": 1
+      "user_id": 5
     }
     ```
 
@@ -156,7 +127,7 @@ Perform power operations on an instance.
 ```
 
 #### Upgrade Package
-Change the resource package for an instance. New limits are applied immediately via live update.
+Change the resource package for an instance. New limits are applied immediately.
 
 *   **Endpoint:** `POST /instances/{name}/upgrade`
 *   **Body Parameters:**
@@ -183,49 +154,66 @@ Get all available resource packages.
     {
       "status": "success",
       "packages": [
-        { "id": 1, "name": "Starter", "cpu_limit": 1.0, "ram_limit": 1.0, "disk_limit": 10, "is_active": true }
+        { "id": 1, "name": "Starter", "cpu_limit": 1.0, "ram_limit": 1.0, "disk_limit": 10 }
       ]
     }
     ```
 
 #### Get Package Details
-Get details for a single package.
-
 *   **Endpoint:** `GET /packages/{id}`
+
+#### Create User
+Create a new standard user. (Admin or Reseller)
+
+*   **Endpoint:** `POST /users`
+*   **Body Parameters:**
+    *   `name`, `email`, `password` (all required)
+*   **Response:**
+    ```json
+    { "status": "success", "user_id": 20 }
+    ```
+
+#### Create Reseller
+Create a new user with 'reseller' role.
+
+*   **Endpoint:** `POST /resellers`
+*   **Body Parameters:**
+    *   `name`, `email`, `password` (all required)
+*   **Response:**
+    ```json
+    { "status": "success", "user_id": 15, "username": "reseller_user" }
+    ```
+
+#### Reseller Stats
+Retrieve stats for a specific reseller.
+
+*   **Endpoint:** `GET /resellers/{username}/stats`
 *   **Response:**
     ```json
     {
       "status": "success",
-      "package": {
-        "id": 1,
-        "name": "Starter",
-        "cpu_limit": 1.0,
-        "ram_limit": 1.0,
-        "disk_limit": 10,
-        "created_at": "2024-01-01T00:00:00.000000Z"
+      "counts": {
+        "instances_total": 5,
+        "instances_running": 4,
+        "instances_stopped": 1
       }
     }
     ```
 
-#### Reseller Management (Admin Only)
+#### Reseller SSO
+Generate a temporary auto-login URL for a specific reseller.
 
-Manage reseller accounts.
-
-*   **List Resellers:** `GET /resellers`
-*   **Create Reseller:** `POST /resellers`
-    *   Body: `name` (Full Name), `username` (Unique), `email`, `password`, `instance_limit` (Optional, default 10)
-*   **Get Reseller:** `GET /resellers/{username}`
-*   **Reseller Stats:** `GET /resellers/{username}/stats`
-    *   Returns total, running, stopped counts and limit.
-*   **Update Reseller:** `PUT /resellers/{username}`
-    *   Body: `name`, `username`, `email`, `password`, `instance_limit`
-*   **Suspend Reseller:** `POST /resellers/{username}/suspend`
-    *   Stops login, API access, and all owned instances.
-*   **Unsuspend Reseller:** `POST /resellers/{username}/unsuspend`
-*   **Delete Reseller:** `DELETE /resellers/{username}`
+*   **Endpoint:** `POST /resellers/{username}/sso`
+*   **Response:**
+    ```json
+    {
+      "status": "success",
+      "redirect_url": "https://panel-domain.com/sso/login/reseller?signature=..."
+    }
+    ```
 
 #### User SSO
-Generate a temporary auto-login URL for a specific user. Resellers can only access their own users.
+Generate a temporary auto-login URL for a specific user.
 
 *   **Endpoint:** `POST /users/sso`
 *   **Body Parameters:**
@@ -234,7 +222,7 @@ Generate a temporary auto-login URL for a specific user. Resellers can only acce
     ```json
     {
       "status": "success",
-      "redirect_url": "https://panel-domain.com/sso/login/5?expires=1704067200&signature=..."
+      "redirect_url": "https://panel-domain.com/sso/login/5?signature=..."
     }
     ```
 
@@ -247,6 +235,6 @@ The API returns standard HTTP status codes:
 *   `401`: Unauthenticated (Missing/Invalid Token)
 *   `403`: Unauthorized (Insufficient Permissions or IP not whitelisted)
 *   `404`: Resource Not Found
-*   `422`: Validation Error (Check `errors` object in response body)
-*   `429`: Too Many Requests (Rate limit: 60 requests/minute)
+*   `422`: Validation Error
+*   `429`: Too Many Requests
 *   `500`: Server Error
