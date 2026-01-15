@@ -226,19 +226,9 @@ function n8n_panel_CreateAccount(array $params)
         if ($productType === 'reselleraccount') {
             // Reseller Logic
             try {
-                // For Reseller, we use the email as the username if API doesn't return one,
-                // OR we expect the API to return 'username' (as per API.md update).
-                // Let's assume API returns 'username' or we use email/name as fallback.
-                // Actually, API.md says Create Reseller returns { "username": "..." }.
-                // But if it fails or exists, we might not get it.
-                // We'll try to capture the response.
-
                 $result = $client->createReseller($firstName . ' ' . $lastName, $email, $password);
 
                 $username = isset($result['username']) ? $result['username'] : $email;
-                // Fallback to email if API doesn't return username, though endpoints expect username.
-                // Ideally, the API would return the username even if user exists, or we'd need a way to look it up.
-                // For now, we update tblhosting with what we have.
 
                  Capsule::table('tblhosting')
                     ->where('id', $params['serviceid'])
@@ -249,16 +239,9 @@ function n8n_panel_CreateAccount(array $params)
 
                 return 'success';
             } catch (Exception $e) {
-                // Return success if user already exists or handle specific errors
-                // For now, if creation fails, we might want to return error unless it's "Already Exists"
-                // Assuming success for idempotency if exception is ignored in previous logic
-                // But createReseller might be critical.
-                // Reverting to previous pattern: Try create, ignore error (likely exists), return success.
-                // However, if it's a connection error, we shouldn't return success.
-                // The previous code ignored ALL exceptions during user creation.
-                // We will stick to that pattern but we should return success after.
+                // Pass error message back to WHMCS
+                return $e->getMessage();
             }
-             return 'success';
 
         } else {
             // User Logic
