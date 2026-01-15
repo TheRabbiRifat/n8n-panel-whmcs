@@ -367,7 +367,7 @@ function n8n_panel_AdminSingleSignOn(array $params)
         // but user said "no emails". We assume API returns 'username' for the token owner now.
         // If not present, we might fail or try 'name'.
 
-        $serverusername = $params['serverhostname'];
+        $serverusername = $params['serverusername'];
         
         if (empty($serverusername)) {
              return array(
