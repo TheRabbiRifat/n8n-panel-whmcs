@@ -415,7 +415,7 @@ function n8n_panel_ServiceSingleSignOn(array $params)
         }
 
         if ($productType === 'reselleraccount') {
-            $result = $client->getResellerSso($username);
+            $result = $client->getUserSso($username);
         } else {
             // Standard User SSO
             $result = $client->getUserSso($username);
@@ -475,7 +475,7 @@ function n8n_panel_LoginLink(array $params)
         if ($productType === 'reselleraccount') {
              if (empty($username)) return '';
 
-             $result = $client->getResellerSso($username);
+             $result = $client->getUserSso($username);
              if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
                  $url = $result['redirect_url'];
                  return '<a href="' . $url . '" target="_blank">Login to Control Panel</a>';
