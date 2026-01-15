@@ -17,7 +17,7 @@ function n8n_panel_MetaData()
         'APIVersion' => '1.1',
         'RequiresServer' => true,
         'AdminSingleSignOnLabel' => 'Login to n8n Panel',
-        'ServiceSingleSignOnLabel' => 'Login to Panel',
+        'ServiceSingleSignOnLabel' => 'Login to Reseller Panel',
     );
 }
 
@@ -92,7 +92,7 @@ function n8n_panel_PackageLoader(array $params)
         if (isset($response['packages'])) {
             foreach ($response['packages'] as $pkg) {
                 // Return Name as key and value
-                $list[$pkg['name']] = $pkg['name'];
+                $list[$pkg['id']] = $pkg['name'];
             }
         }
         return $list;
@@ -367,22 +367,17 @@ function n8n_panel_AdminSingleSignOn(array $params)
         // but user said "no emails". We assume API returns 'username' for the token owner now.
         // If not present, we might fail or try 'name'.
 
-        $adminUsername = '';
-        if (isset($connectionData['user']['username'])) {
-            $adminUsername = $connectionData['user']['username'];
-        } elseif (isset($connectionData['user']['name'])) {
-             $adminUsername = $connectionData['user']['name'];
-        }
-
-        if (empty($adminUsername)) {
+        $serverusername = $params['serverhostname'];
+        
+        if (empty($serverusername)) {
              return array(
                 'success' => false,
-                'errorMsg' => "Could not retrieve Admin Username from connection test.",
+                'errorMsg' => "Could not retrieve server Username from System.",
             );
         }
 
         // 2. Get SSO URL for Admin
-        $result = $client->getUserSso($adminUsername);
+        $result = $client->getUserSso($serverusername);
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
