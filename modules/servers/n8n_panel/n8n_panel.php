@@ -387,18 +387,39 @@ function n8n_panel_AdminServicesTabFields(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $instanceId = $params['username'];
+        $username = $params['username'];
 
-        if (!empty($instanceId)) {
-            $stats = $client->getInstanceStats($instanceId);
+        // Determine Product Type
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
 
-            if (isset($stats['status']) && $stats['status'] == 'success') {
-                return array(
-                    'Instance Status' => ucfirst($stats['instance_status']),
-                    'CPU Usage' => $stats['cpu_percent'] . '%',
-                    'Memory Usage' => $stats['memory_usage'] . ' / ' . $stats['memory_limit'] . ' (' . $stats['memory_percent'] . '%)',
-                    'Domain' => '<a href="http://' . $stats['domain'] . '" target="_blank">' . $stats['domain'] . '</a>',
-                );
+        if (!empty($username)) {
+
+            if ($productType === 'reselleraccount') {
+                // Reseller Logic
+                $stats = $client->getResellerStats($username);
+
+                if (isset($stats['status']) && $stats['status'] == 'success') {
+                    return array(
+                        'Total Instances' => $stats['counts']['instances_total'],
+                        'Running Instances' => $stats['counts']['instances_running'],
+                        'Stopped Instances' => $stats['counts']['instances_stopped'],
+                    );
+                }
+
+            } else {
+                // User Logic
+                $stats = $client->getInstanceStats($username); // username holds instance name for users
+
+                if (isset($stats['status']) && $stats['status'] == 'success') {
+                    return array(
+                        'Instance Status' => ucfirst($stats['instance_status']),
+                        'CPU Usage' => $stats['cpu_percent'] . '%',
+                        'Memory Usage' => $stats['memory_usage'] . ' / ' . $stats['memory_limit'] . ' (' . $stats['memory_percent'] . '%)',
+                        'Domain' => '<a href="http://' . $stats['domain'] . '" target="_blank">' . $stats['domain'] . '</a>',
+                    );
+                }
             }
         }
     } catch (Exception $e) {
@@ -513,8 +534,17 @@ function n8n_panel_ClientAreaCustomButtonArray(array $params)
     );
 }
 
-function n8n_panel_AdminCustomButtonArray()
+function n8n_panel_AdminCustomButtonArray(array $params)
 {
+    // Check if Reseller Account
+    $productType = Capsule::table('tblproducts')
+        ->where('id', $params['packageid'])
+        ->value('type');
+
+    if ($productType === 'reselleraccount') {
+        return array();
+    }
+
     return array(
         "Start Instance" => "startInstance",
         "Stop Instance" => "stopInstance",
