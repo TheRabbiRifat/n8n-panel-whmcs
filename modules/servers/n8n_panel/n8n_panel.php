@@ -226,11 +226,20 @@ function n8n_panel_CreateAccount(array $params)
         if ($productType === 'reselleraccount') {
             // Reseller Logic
             try {
-                $result = $client->createReseller($firstName . ' ' . $lastName, $email, $password);
+                $username = $params['username'];
+                if (empty($username)) {
+                    // Fallback: use email or derived username
+                    $username = $params['clientsdetails']['email'];
+                }
 
-                $username = isset($result['username']) ? $result['username'] : $email;
+                $result = $client->createReseller($firstName . ' ' . $lastName, $username, $email, $password);
 
-                 Capsule::table('tblhosting')
+                // If result doesn't return username, we rely on what we sent.
+                // However, API usually returns the created object.
+                // We'll update tblhosting with the confirmed username.
+                // API.md for createReseller doesn't explicitly show response but implies success.
+
+                Capsule::table('tblhosting')
                     ->where('id', $params['serviceid'])
                     ->update([
                         'username' => $username,
@@ -245,11 +254,7 @@ function n8n_panel_CreateAccount(array $params)
 
         } else {
             // User Logic
-            try {
-                $client->createUser($firstName . ' ' . $lastName, $email, $password);
-            } catch (Exception $e) {
-                // Ignore
-            }
+            // createUser removed from API. Instance is assigned to Admin (Token Holder).
 
             // Generate Instance Name: 7 digit random (a-z, 1-9)
             $chars = 'abcdefghijklmnopqrstuvwxyz123456789';
@@ -259,7 +264,7 @@ function n8n_panel_CreateAccount(array $params)
             }
 
             // 2. Create Instance
-            $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
+            $result = $client->createInstance($packageId, $instanceName, $n8nVersion);
 
             if (isset($result['status']) && $result['status'] == 'success') {
                 // API formerly returned 'instance_id'. We now use 'name' (which we generated).
@@ -292,13 +297,22 @@ function n8n_panel_SuspendAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $instanceId = $params['username'];
+        $username = $params['username'];
 
-        if (empty($instanceId)) {
-            return "Instance ID not found in username field.";
+        if (empty($username)) {
+            return "Username/Instance ID not found.";
         }
 
-        $client->suspendInstance($instanceId);
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
+
+        if ($productType === 'reselleraccount') {
+            $client->suspendReseller($username);
+        } else {
+            $client->suspendInstance($username);
+        }
+
         return 'success';
     } catch (Exception $e) {
         return $e->getMessage();
@@ -309,13 +323,22 @@ function n8n_panel_UnsuspendAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $instanceId = $params['username'];
+        $username = $params['username'];
 
-        if (empty($instanceId)) {
-            return "Instance ID not found in username field.";
+        if (empty($username)) {
+            return "Username/Instance ID not found.";
         }
 
-        $client->unsuspendInstance($instanceId);
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
+
+        if ($productType === 'reselleraccount') {
+            $client->unsuspendReseller($username);
+        } else {
+            $client->unsuspendInstance($username);
+        }
+
         return 'success';
     } catch (Exception $e) {
         return $e->getMessage();
@@ -326,13 +349,21 @@ function n8n_panel_TerminateAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $instanceId = $params['username'];
+        $username = $params['username'];
 
-        if (empty($instanceId)) {
-            return "Instance ID not found in username field.";
+        if (empty($username)) {
+            return "Username/Instance ID not found.";
         }
 
-        $client->terminateInstance($instanceId);
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
+
+        if ($productType === 'reselleraccount') {
+            $client->deleteReseller($username);
+        } else {
+            $client->terminateInstance($username);
+        }
 
         // Clear the username/domain?
          Capsule::table('tblhosting')
@@ -420,29 +451,18 @@ function n8n_panel_AdminSingleSignOn(array $params)
     try {
         $client = n8n_panel_getClient($params);
 
-        // 1. Get Admin Username associated with the API Token
+        // 1. Get Admin Email associated with the API Token
         $connectionData = $client->testConnection();
-
-        // Use 'username' from response if available, otherwise assume 'name' is the username or try to use email as fallback if strictly necessary,
-        // but user said "no emails". We assume API returns 'username' for the token owner now.
-        // If not present, we might fail or try 'name'.
-
-        $adminUsername = '';
-        if (isset($connectionData['user']['username'])) {
-            $adminUsername = $connectionData['user']['username'];
-        } elseif (isset($connectionData['user']['name'])) {
-             $adminUsername = $connectionData['user']['name'];
-        }
-
-        if (empty($adminUsername)) {
+        if (!isset($connectionData['user']['email'])) {
              return array(
                 'success' => false,
-                'errorMsg' => "Could not retrieve Admin Username from connection test.",
+                'errorMsg' => "Could not retrieve Admin Email from connection test.",
             );
         }
+        $adminEmail = $connectionData['user']['email'];
 
         // 2. Get SSO URL for Admin
-        $result = $client->getUserSso($adminUsername);
+        $result = $client->getUserSso($adminEmail);
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
