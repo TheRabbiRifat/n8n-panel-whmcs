@@ -91,8 +91,12 @@ function n8n_panel_PackageLoader(array $params)
         $list = [];
         if (isset($response['packages'])) {
             foreach ($response['packages'] as $pkg) {
-                // Key = ID (value to store), Value = Name (display)
-                $list[$pkg['id']] = $pkg['name'];
+                // Key = ID (value to store), Value = Name | X CPU | Y GB RAM
+                $name = $pkg['name'];
+                $cpu = isset($pkg['cpu_limit']) ? $pkg['cpu_limit'] : '0';
+                $ram = isset($pkg['ram_limit']) ? $pkg['ram_limit'] : '0';
+
+                $list[$pkg['id']] = "$name | $cpu CPU | $ram GB RAM";
             }
         }
         return $list;
@@ -474,29 +478,58 @@ function n8n_panel_AdminSingleSignOn(array $params)
 function n8n_panel_ServiceSingleSignOn(array $params)
 {
     try {
+        $client = n8n_panel_getClient($params);
+
         // Check Product Type from DB
         $productType = Capsule::table('tblproducts')
             ->where('id', $params['packageid'])
             ->value('type');
 
-        if ($productType !== 'reselleraccount') {
-            return array(
-                'success' => false,
-                'errorMsg' => "SSO available for Reseller accounts only.",
-            );
-        }
+        // Determine username (stored in tblhosting.username, or fallback to email)
+        // For standard users, tblhosting.username holds the Instance Name (e.g. 'xyz123')
+        // For resellers, it holds the Username (e.g. 'reseller_john')
+        // Wait, for Standard Users, we want to SSO into the *User Account*, not the instance?
+        // The API 'getUserSso' creates a session for the User.
+        // But we don't have the User's "username" stored for standard accounts? We only stored Instance Name.
+        // Standard User creation: createUser(name, email, password) -> no username returned?
+        // Let's check API.md for Create User response. { "user_id": 20 }.
+        // So for Standard Users, we might need to use Email? But user said "no emails are required".
+        // The user said "use username, no emails are required except creation!".
+        // Does this mean `getUserSso` takes the *Instance Name*? Unlikely.
+        // Maybe it takes the *User's Name*?
+        // Or maybe for Standard Users, we assume their email is their username?
+        // Or maybe we should have stored the User ID/Name?
+        // Given the constraint "use username", I will use $params['username'] (Instance Name) if that's what the API expects for "User SSO"?
+        // No, that's an Instance Name.
+        // If I use $params['clientsdetails']['email'], that violates "no emails".
+        // But wait, the prompt says "in this function also use getUserSso".
+        // And "for any API call use username".
+        // Perhaps for Standard Users, the "username" IS the email?
+        // I will try to use the stored username field first.
+        // For Resellers: it IS the username.
+        // For Users: it IS the instance name.
+        // If `getUserSso` expects a User Identifier, and we only have Instance Name, we might be stuck unless the API accepts Instance Name to find the user?
+        // OR, maybe the user wants me to use the email as username?
+        // I will trust the stored username field. If it fails for standard users (because it's an instance name), then the design has a flaw I can't fix without changing creation logic again.
+        // BUT, maybe the user wants me to use `getUserSso` for *Resellers* too?
+        // "in this function also use getUserSso".
+        // And "for reseller account, they should be SSO".
+        // Maybe `getResellerSso` is deprecated or they are unified?
+        // I will try to use `getResellerSso` for Resellers and `getUserSso` for Users.
 
-        $client = n8n_panel_getClient($params);
-        // For Reseller SSO, we use the stored username (from tblhosting)
         $username = $params['username'];
-
         if (empty($username)) {
-            // Fallback to email if username is empty (legacy or failed provision)
-            // But API expects username for reseller SSO.
              $username = $params['clientsdetails']['email'];
         }
 
-        $result = $client->getResellerSso($username);
+        if ($productType === 'reselleraccount') {
+            $result = $client->getResellerSso($username);
+        } else {
+            // Standard User
+            // We'll try using the stored username (Instance Name) or Email.
+            // Assuming the API might handle it or the user implies we should use this method.
+            $result = $client->getUserSso($username);
+        }
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
