@@ -496,6 +496,23 @@ function n8n_panel_ServiceSingleSignOn(array $params)
     }
 }
 
+function n8n_panel_ClientAreaCustomButtonArray(array $params)
+{
+    // Check if Reseller Account
+    $productType = Capsule::table('tblproducts')
+        ->where('id', $params['packageid'])
+        ->value('type');
+
+    if ($productType === 'reselleraccount') {
+        return array();
+    }
+
+    return array(
+        "Start Instance" => "startInstance",
+        "Stop Instance" => "stopInstance",
+    );
+}
+
 function n8n_panel_AdminCustomButtonArray()
 {
     return array(
