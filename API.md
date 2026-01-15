@@ -178,7 +178,7 @@ Create a new user with 'reseller' role.
 
 *   **Endpoint:** `POST /resellers`
 *   **Body Parameters:**
-    *   `name`,`username`, `email`, `password` (all required)
+    *   `name`, `email`, `password` (all required)
 *   **Response:**
     ```json
     { "status": "success", "user_id": 15, "username": "reseller_user" }
