@@ -26,7 +26,8 @@ function n8n_panel_ConfigOptions()
     return array(
         'Package ID' => array(
             'Type' => 'text',
-            'Loader' => 'n8n_panel_LoaderPackageId',
+            'Size' => '25',
+            'Loader' => 'n8n_panel_PackageLoader',
             'SimpleMode' => true,
             'Description' => 'Select a package from the n8n Host Manager',
         ),
@@ -39,39 +40,51 @@ function n8n_panel_ConfigOptions()
     );
 }
 
-function n8n_panel_LoaderPackageId(array $params)
+function n8n_panel_PackageLoader(array $params)
 {
-    try {
+    // Try to get server details from params (if server group selected)
+    // or fallback to finding the first active server (common practice for config loaders)
+
+    $hostname = '';
+    $password = '';
+    $secure = false;
+
+    if (!empty($params['serverhostname']) || !empty($params['serverip'])) {
+        $hostname = !empty($params['serverhostname']) ? $params['serverhostname'] : $params['serverip'];
+        $password = $params['serverpassword']; // Already decrypted in Loader params context? Usually yes.
+        $secure = (isset($params['serversecure']) && $params['serversecure'] == 'on');
+    } else {
+        // Fallback: Find first active server
         $server = Capsule::table('tblservers')
             ->where('type', 'n8n_panel')
             ->where('disabled', 0)
             ->first();
 
-        if (!$server) {
-            throw new Exception("No active n8n_panel server found.");
+        if ($server) {
+            $hostname = !empty($server->hostname) ? $server->hostname : $server->ipaddress;
+            $password = decrypt($server->password);
+            $secure = ($server->secure == 'on');
+        } else {
+            throw new Exception("No active n8n Panel server found.");
         }
+    }
 
-        $hostname = $server->hostname;
-        if (empty($hostname)) {
-            $hostname = $server->ipaddress;
-        }
-        $password = decrypt($server->password);
-        $secure = ($server->secure == 'on');
+    // Construct Base URL
+    if (!preg_match("~^https?://~i", $hostname)) {
+        $hostname = "https://" . $hostname;
+    }
 
-        if (!preg_match("~^https?://~i", $hostname)) {
-            $hostname = "https://" . $hostname;
-        }
+    $parts = parse_url($hostname);
+    if (!isset($parts['port'])) {
+        $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
+        $host = isset($parts['host']) ? $parts['host'] : '';
+        $path = isset($parts['path']) ? $parts['path'] : '';
+        $hostname = $scheme . $host . ':8448' . $path;
+    }
 
-        $parts = parse_url($hostname);
-        if (!isset($parts['port'])) {
-            $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
-            $host = isset($parts['host']) ? $parts['host'] : '';
-            $path = isset($parts['path']) ? $parts['path'] : '';
-            $hostname = $scheme . $host . ':8448' . $path;
-        }
+    $baseUrl = rtrim($hostname, '/') . '/api/integration';
 
-        $baseUrl = rtrim($hostname, '/') . '/api/integration';
-
+    try {
         $client = new N8nHostManagerClient($baseUrl, $password, $secure);
         $response = $client->getPackages();
 
@@ -85,7 +98,7 @@ function n8n_panel_LoaderPackageId(array $params)
         return $list;
 
     } catch (Exception $e) {
-        throw new Exception("Error loading packages: " . $e->getMessage());
+        throw new Exception("Failed to fetch packages: " . $e->getMessage());
     }
 }
 
@@ -165,10 +178,7 @@ function n8n_panel_CreateAccount(array $params)
 
         if ($productType === 'reselleraccount') {
             try {
-                $username = $params['username'];
-                if (empty($username)) {
-                    $username = $params['clientsdetails']['email'];
-                }
+                $result = $client->createReseller($firstName . ' ' . $lastName, $email, $password);
 
                 // For Reseller, we might also need package limits?
                 // API `createReseller` takes instance_limit. Maybe mapped from package?
@@ -177,7 +187,7 @@ function n8n_panel_CreateAccount(array $params)
 
                 $client->createReseller($firstName . ' ' . $lastName, $username, $email, $password);
 
-                Capsule::table('tblhosting')
+                 Capsule::table('tblhosting')
                     ->where('id', $params['serviceid'])
                     ->update([
                         'username' => $username,
@@ -200,7 +210,8 @@ function n8n_panel_CreateAccount(array $params)
                 $instanceName .= $chars[mt_rand(0, strlen($chars) - 1)];
             }
 
-            $result = $client->createInstance($packageId, $instanceName, $n8nVersion);
+            // 2. Create Instance
+            $result = $client->createInstance($email, $packageId, $instanceName, $n8nVersion);
 
             if (isset($result['status']) && $result['status'] == 'success') {
                 $domain = $result['domain'];
@@ -227,19 +238,13 @@ function n8n_panel_SuspendAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $username = $params['username'];
-        $productType = $params['producttype'];
+        $instanceId = $params['username'];
 
-        if (empty($username)) {
-            return "Username/Instance ID not found.";
+        if (empty($instanceId)) {
+            return "Instance ID not found in username field.";
         }
 
-        if ($productType === 'reselleraccount') {
-            $client->suspendReseller($username);
-        } else {
-            $client->suspendInstance($username);
-        }
-
+        $client->suspendInstance($instanceId);
         return 'success';
     } catch (Exception $e) {
         return $e->getMessage();
@@ -250,19 +255,13 @@ function n8n_panel_UnsuspendAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $username = $params['username'];
-        $productType = $params['producttype'];
+        $instanceId = $params['username'];
 
-        if (empty($username)) {
-            return "Username/Instance ID not found.";
+        if (empty($instanceId)) {
+            return "Instance ID not found in username field.";
         }
 
-        if ($productType === 'reselleraccount') {
-            $client->unsuspendReseller($username);
-        } else {
-            $client->unsuspendInstance($username);
-        }
-
+        $client->unsuspendInstance($instanceId);
         return 'success';
     } catch (Exception $e) {
         return $e->getMessage();
@@ -273,18 +272,13 @@ function n8n_panel_TerminateAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $username = $params['username'];
-        $productType = $params['producttype'];
+        $instanceId = $params['username'];
 
-        if (empty($username)) {
-            return "Username/Instance ID not found.";
+        if (empty($instanceId)) {
+            return "Instance ID not found in username field.";
         }
 
-        if ($productType === 'reselleraccount') {
-            $client->deleteReseller($username);
-        } else {
-            $client->terminateInstance($username);
-        }
+        $client->terminateInstance($instanceId);
 
         Capsule::table('tblhosting')
             ->where('id', $params['serviceid'])
@@ -366,10 +360,29 @@ function n8n_panel_AdminSingleSignOn(array $params)
     try {
         $client = n8n_panel_getClient($params);
 
-        // Use server username defined in WHMCS
-        $username = $params['serverusername'];
+        // 1. Get Admin Username associated with the API Token
+        $connectionData = $client->testConnection();
 
-        $result = $client->getUserSso($username);
+        // Use 'username' from response if available, otherwise assume 'name' is the username or try to use email as fallback if strictly necessary,
+        // but user said "no emails". We assume API returns 'username' for the token owner now.
+        // If not present, we might fail or try 'name'.
+
+        $adminUsername = '';
+        if (isset($connectionData['user']['username'])) {
+            $adminUsername = $connectionData['user']['username'];
+        } elseif (isset($connectionData['user']['name'])) {
+             $adminUsername = $connectionData['user']['name'];
+        }
+
+        if (empty($adminUsername)) {
+             return array(
+                'success' => false,
+                'errorMsg' => "Could not retrieve Admin Username from connection test.",
+            );
+        }
+
+        // 2. Get SSO URL for Admin
+        $result = $client->getUserSso($adminUsername);
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
@@ -397,7 +410,6 @@ function n8n_panel_ServiceSingleSignOn(array $params)
         $productType = $params['producttype'];
         $client = n8n_panel_getClient($params);
         $username = $params['username'];
-
         if (empty($username)) {
              $username = $params['clientsdetails']['email'];
         }

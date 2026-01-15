@@ -77,9 +77,10 @@ class N8nHostManagerClient
         return $this->request('GET', '/system/stats');
     }
 
-    public function createInstance($packageId, $name, $version = 'latest')
+    public function createInstance($email, $packageId, $name, $version = 'latest')
     {
         return $this->request('POST', '/instances/create', [
+            'email' => $email,
             'package_id' => $packageId,
             'name' => $name,
             'version' => $version
@@ -133,40 +134,22 @@ class N8nHostManagerClient
         return $this->request('GET', '/packages/' . $id);
     }
 
-    public function createReseller($name, $username, $email, $password, $instanceLimit = null)
+    public function createUser($name, $email, $password)
     {
-        $data = [
+        return $this->request('POST', '/users', [
             'name' => $name,
-            'username' => $username,
             'email' => $email,
             'password' => $password
-        ];
-
-        if ($instanceLimit !== null) {
-            $data['instance_limit'] = $instanceLimit;
-        }
-
-        return $this->request('POST', '/resellers', $data);
+        ]);
     }
 
-    public function updateReseller($username, $data)
+    public function createReseller($name, $email, $password)
     {
-        return $this->request('PUT', '/resellers/' . $username, $data);
-    }
-
-    public function suspendReseller($username)
-    {
-        return $this->request('POST', '/resellers/' . $username . '/suspend');
-    }
-
-    public function unsuspendReseller($username)
-    {
-        return $this->request('POST', '/resellers/' . $username . '/unsuspend');
-    }
-
-    public function deleteReseller($username)
-    {
-        return $this->request('DELETE', '/resellers/' . $username);
+        return $this->request('POST', '/resellers', [
+            'name' => $name,
+            'email' => $email,
+            'password' => $password
+        ]);
     }
 
     public function getResellerStats($username)
