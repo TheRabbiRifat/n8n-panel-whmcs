@@ -23,66 +23,13 @@ function n8n_panel_MetaData()
 
 function n8n_panel_ConfigOptions()
 {
-    $packageOptions = [];
-    $description = 'Select a package from the n8n Host Manager';
-
-    try {
-        $server = Capsule::table('tblservers')
-            ->where('type', 'n8n_panel')
-            ->where('disabled', 0)
-            ->first();
-
-        if ($server) {
-            $hostname = $server->hostname;
-            if (empty($hostname)) {
-                $hostname = $server->ipaddress;
-            }
-            $password = decrypt($server->password);
-            $secure = ($server->secure == 'on');
-
-            if (!preg_match("~^https?://~i", $hostname)) {
-                $hostname = "https://" . $hostname;
-            }
-
-            $parts = parse_url($hostname);
-            if (!isset($parts['port'])) {
-                $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
-                $host = isset($parts['host']) ? $parts['host'] : '';
-                $path = isset($parts['path']) ? $parts['path'] : '';
-                $hostname = $scheme . $host . ':8448' . $path;
-            }
-
-            $baseUrl = rtrim($hostname, '/') . '/api/integration';
-
-            $client = new N8nHostManagerClient($baseUrl, $password, $secure);
-            $response = $client->getPackages();
-
-            if (isset($response['packages'])) {
-                foreach ($response['packages'] as $pkg) {
-                    $packageOptions[$pkg['id']] = $pkg['name'];
-                }
-            }
-        }
-    } catch (Exception $e) {
-        // Fallback to text field
-    }
-
-    if (!empty($packageOptions)) {
-        $packageField = array(
-            'Type' => 'dropdown',
-            'Options' => $packageOptions,
-            'Description' => $description,
-        );
-    } else {
-        $packageField = array(
-            'Type' => 'text',
-            'Size' => '10',
-            'Description' => 'Package ID (Could not fetch packages: check server config)',
-        );
-    }
-
     return array(
-        'Package ID' => $packageField,
+        'Package ID' => array(
+            'Type' => 'text',
+            'Loader' => 'n8n_panel_LoaderPackageId',
+            'SimpleMode' => true,
+            'Description' => 'Select a package from the n8n Host Manager',
+        ),
         'n8n Version' => array(
             'Type' => 'dropdown',
             'Options' => 'stable,latest,beta',
@@ -90,6 +37,55 @@ function n8n_panel_ConfigOptions()
             'Description' => 'Docker tag',
         ),
     );
+}
+
+function n8n_panel_LoaderPackageId(array $params)
+{
+    try {
+        $server = Capsule::table('tblservers')
+            ->where('type', 'n8n_panel')
+            ->where('disabled', 0)
+            ->first();
+
+        if (!$server) {
+            throw new Exception("No active n8n_panel server found.");
+        }
+
+        $hostname = $server->hostname;
+        if (empty($hostname)) {
+            $hostname = $server->ipaddress;
+        }
+        $password = decrypt($server->password);
+        $secure = ($server->secure == 'on');
+
+        if (!preg_match("~^https?://~i", $hostname)) {
+            $hostname = "https://" . $hostname;
+        }
+
+        $parts = parse_url($hostname);
+        if (!isset($parts['port'])) {
+            $scheme = isset($parts['scheme']) ? $parts['scheme'] . '://' : 'https://';
+            $host = isset($parts['host']) ? $parts['host'] : '';
+            $path = isset($parts['path']) ? $parts['path'] : '';
+            $hostname = $scheme . $host . ':8448' . $path;
+        }
+
+        $baseUrl = rtrim($hostname, '/') . '/api/integration';
+
+        $client = new N8nHostManagerClient($baseUrl, $password, $secure);
+        $response = $client->getPackages();
+
+        $list = [];
+        if (isset($response['packages'])) {
+            foreach ($response['packages'] as $pkg) {
+                $list[$pkg['id']] = $pkg['name'];
+            }
+        }
+        return $list;
+
+    } catch (Exception $e) {
+        throw new Exception("Error loading packages: " . $e->getMessage());
+    }
 }
 
 function n8n_panel_getClient($params)
