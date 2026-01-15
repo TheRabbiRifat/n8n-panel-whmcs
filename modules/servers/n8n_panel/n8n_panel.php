@@ -297,13 +297,22 @@ function n8n_panel_SuspendAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $instanceId = $params['username'];
+        $username = $params['username'];
 
-        if (empty($instanceId)) {
-            return "Instance ID not found in username field.";
+        if (empty($username)) {
+            return "Username/Instance ID not found.";
         }
 
-        $client->suspendInstance($instanceId);
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
+
+        if ($productType === 'reselleraccount') {
+            $client->suspendReseller($username);
+        } else {
+            $client->suspendInstance($username);
+        }
+
         return 'success';
     } catch (Exception $e) {
         return $e->getMessage();
@@ -314,13 +323,22 @@ function n8n_panel_UnsuspendAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $instanceId = $params['username'];
+        $username = $params['username'];
 
-        if (empty($instanceId)) {
-            return "Instance ID not found in username field.";
+        if (empty($username)) {
+            return "Username/Instance ID not found.";
         }
 
-        $client->unsuspendInstance($instanceId);
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
+
+        if ($productType === 'reselleraccount') {
+            $client->unsuspendReseller($username);
+        } else {
+            $client->unsuspendInstance($username);
+        }
+
         return 'success';
     } catch (Exception $e) {
         return $e->getMessage();
@@ -331,13 +349,21 @@ function n8n_panel_TerminateAccount(array $params)
 {
     try {
         $client = n8n_panel_getClient($params);
-        $instanceId = $params['username'];
+        $username = $params['username'];
 
-        if (empty($instanceId)) {
-            return "Instance ID not found in username field.";
+        if (empty($username)) {
+            return "Username/Instance ID not found.";
         }
 
-        $client->terminateInstance($instanceId);
+        $productType = Capsule::table('tblproducts')
+            ->where('id', $params['packageid'])
+            ->value('type');
+
+        if ($productType === 'reselleraccount') {
+            $client->deleteReseller($username);
+        } else {
+            $client->terminateInstance($username);
+        }
 
         // Clear the username/domain?
          Capsule::table('tblhosting')
@@ -474,13 +500,16 @@ function n8n_panel_ServiceSingleSignOn(array $params)
         }
 
         $client = n8n_panel_getClient($params);
+        // For Reseller SSO, we use the stored username (from tblhosting)
+        $username = $params['username'];
 
-        // For Reseller SSO, we now use getUserSso which takes email
-        // We can get email from clientsdetails or we might need to look up the reseller?
-        // Usually, reseller email is the client email.
-        $email = $params['clientsdetails']['email'];
+        if (empty($username)) {
+            // Fallback to email if username is empty (legacy or failed provision)
+            // But API expects username for reseller SSO.
+             $username = $params['clientsdetails']['email'];
+        }
 
-        $result = $client->getUserSso($email);
+        $result = $client->getResellerSso($username);
 
         if (isset($result['status']) && $result['status'] == 'success' && isset($result['redirect_url'])) {
              return array(
