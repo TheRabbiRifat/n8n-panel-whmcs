@@ -87,39 +87,39 @@ class N8nHostManagerClient
         ]);
     }
 
-    public function getInstanceStats($id)
+    public function getInstanceStats($name)
     {
-        return $this->request('GET', '/instances/' . $id . '/stats');
+        return $this->request('GET', '/instances/' . $name . '/stats');
     }
 
-    public function startInstance($id)
+    public function startInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/start');
+        return $this->request('POST', '/instances/' . $name . '/start');
     }
 
-    public function stopInstance($id)
+    public function stopInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/stop');
+        return $this->request('POST', '/instances/' . $name . '/stop');
     }
 
-    public function suspendInstance($id)
+    public function suspendInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/suspend');
+        return $this->request('POST', '/instances/' . $name . '/suspend');
     }
 
-    public function unsuspendInstance($id)
+    public function unsuspendInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/unsuspend');
+        return $this->request('POST', '/instances/' . $name . '/unsuspend');
     }
 
-    public function terminateInstance($id)
+    public function terminateInstance($name)
     {
-        return $this->request('POST', '/instances/' . $id . '/terminate');
+        return $this->request('POST', '/instances/' . $name . '/terminate');
     }
 
-    public function upgradeInstance($id, $packageId)
+    public function upgradeInstance($name, $packageId)
     {
-        return $this->request('POST', '/instances/' . $id . '/upgrade', [
+        return $this->request('POST', '/instances/' . $name . '/upgrade', [
             'package_id' => $packageId
         ]);
     }
@@ -152,10 +152,20 @@ class N8nHostManagerClient
         ]);
     }
 
-    public function getUserSso($email)
+    public function getResellerStats($username)
+    {
+        return $this->request('GET', '/resellers/' . $username . '/stats');
+    }
+
+    public function getResellerSso($username)
+    {
+        return $this->request('POST', '/resellers/' . $username . '/sso');
+    }
+
+    public function getUserSso($username)
     {
         return $this->request('POST', '/users/sso', [
-            'email' => $email
+            'username' => $username
         ]);
     }
 }
