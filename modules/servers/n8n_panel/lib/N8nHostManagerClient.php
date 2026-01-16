@@ -133,13 +133,14 @@ class N8nHostManagerClient
         return $this->request('GET', '/packages/' . $id);
     }
 
-    public function createReseller($name, $username, $email, $password, $instanceLimit = null)
+    public function createReseller($name, $username, $email, $password, $packageId, $instanceLimit = null)
     {
         $data = [
             'name' => $name,
             'username' => $username,
             'email' => $email,
-            'password' => $password
+            'password' => $password,
+            'package_id' => $packageId
         ];
 
         if ($instanceLimit !== null) {

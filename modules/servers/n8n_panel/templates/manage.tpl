@@ -20,7 +20,16 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-sm-4">
+                        <div class="col-sm-3">
+                            <div class="metric-card">
+                                <div class="metric-value">
+                                    {$systemStats.counts.instances_limit|default:0}
+                                </div>
+                                <div class="metric-label">Instance Limit</div>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-3">
                             <div class="metric-card">
                                 <div class="metric-value">
                                     {$systemStats.counts.instances_total|default:0}
@@ -29,7 +38,7 @@
                             </div>
                         </div>
 
-                        <div class="col-sm-4">
+                        <div class="col-sm-3">
                             <div class="metric-card metric-success">
                                 <div class="metric-value">
                                     {$systemStats.counts.instances_running|default:0}
@@ -38,7 +47,7 @@
                             </div>
                         </div>
 
-                        <div class="col-sm-4">
+                        <div class="col-sm-3">
                             <div class="metric-card metric-danger">
                                 <div class="metric-value">
                                     {$systemStats.counts.instances_stopped|default:0}

@@ -35,6 +35,7 @@ function n8n_panel_ConfigOptions()
             'Options' => 'stable,latest,beta',
             'Default' => 'latest',
             'Description' => 'Docker tag',
+            'SimpleMode' => true,
         ),
     );
 }
@@ -157,12 +158,8 @@ function n8n_panel_CreateAccount(array $params)
                     $username = $params['clientsdetails']['email'];
                 }
 
-                // For Reseller, we might also need package limits?
-                // API `createReseller` takes instance_limit. Maybe mapped from package?
-                // But current API call just passes name/email/pass.
-                // We will proceed as before.
-
-                $client->createReseller($firstName . ' ' . $lastName, $username, $email, $password);
+                // For Reseller, we pass package ID as well.
+                $client->createReseller($firstName . ' ' . $lastName, $username, $email, $password, $packageId);
 
                 Capsule::table('tblhosting')
                     ->where('id', $params['serviceid'])
