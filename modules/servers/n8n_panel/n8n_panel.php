@@ -24,7 +24,7 @@ function n8n_panel_MetaData()
 function n8n_panel_ConfigOptions()
 {
     return array(
-        'Package ID' => array(
+        'Package Name' => array(
             'Type' => 'text',
             'Loader' => 'n8n_panel_LoaderPackageId',
             'SimpleMode' => true,
@@ -145,6 +145,7 @@ function n8n_panel_CreateAccount(array $params)
         $firstName = $params['clientsdetails']['firstname'];
         $lastName = $params['clientsdetails']['lastname'];
         $password = $params['password'];
+        // ConfigOption1 corresponds to "Package Name" (stores Package ID via Loader)
         $packageId = $params['configoption1'];
         $n8nVersion = isset($params['configoption2']) ? $params['configoption2'] : 'latest';
         $productType = $params['producttype'];
